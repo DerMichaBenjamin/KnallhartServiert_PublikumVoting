@@ -24,10 +24,12 @@ type AdminDashboardProps = {
   loadError: string | null;
 };
 
-type MessageState = {
-  type: 'success' | 'error';
-  text: string;
-} | null;
+type MessageState =
+  | {
+      type: 'success' | 'error';
+      text: string;
+    }
+  | null;
 
 function createInitialFormState() {
   const now = new Date();
@@ -68,7 +70,10 @@ export default function AdminDashboard({
       body: JSON.stringify(payload),
     });
 
-    const result = await response.json().catch(() => ({ ok: false, error: 'Ungültige Server-Antwort.' }));
+    const result = await response
+      .json()
+      .catch(() => ({ ok: false, error: 'Ungültige Server-Antwort.' }));
+
     if (!response.ok || !result.ok) {
       throw new Error(result.error || 'Aktion fehlgeschlagen.');
     }
@@ -103,15 +108,20 @@ export default function AdminDashboard({
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Umfrage konnte nicht angelegt werden.',
+        text:
+          error instanceof Error
+            ? error.message
+            : 'Umfrage konnte nicht angelegt werden.',
       });
     }
   }
 
   async function onSetCurrent(roundId: string) {
     setMessage(null);
+
     try {
       const result = await sendJson('/api/admin/set-current', { roundId });
+
       refreshWithMessage({
         type: 'success',
         text: `Aktive Umfrage gesetzt: ${result.round?.title ?? 'Runde aktiviert'}`,
@@ -119,15 +129,18 @@ export default function AdminDashboard({
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Aktivieren fehlgeschlagen.',
+        text:
+          error instanceof Error ? error.message : 'Aktivieren fehlgeschlagen.',
       });
     }
   }
 
   async function onEndRound(roundId: string) {
     setMessage(null);
+
     try {
       const result = await sendJson('/api/admin/end-round', { roundId });
+
       refreshWithMessage({
         type: 'success',
         text: `Umfrage beendet: ${result.round?.title ?? 'Runde beendet'}`,
@@ -135,7 +148,8 @@ export default function AdminDashboard({
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Beenden fehlgeschlagen.',
+        text:
+          error instanceof Error ? error.message : 'Beenden fehlgeschlagen.',
       });
     }
   }
@@ -154,14 +168,19 @@ export default function AdminDashboard({
           <div className="pill">Interner Verwaltungsbereich</div>
           <h1 className="hero-title">Release Voting professionell verwalten</h1>
           <p className="hero-copy">
-            Neue Umfragen anlegen, die aktuelle Runde live setzen, Links kopieren und Ergebnisse im Blick behalten.
+            Neue Umfragen anlegen, die aktuelle Runde live setzen, Links kopieren
+            und Ergebnisse im Blick behalten.
           </p>
         </div>
+
         <div className="hero-actions">
           <div className="hero-stat-card">
             <div className="small-text">Aktive Umfrage</div>
-            <div className="hero-stat-value">{currentRound?.title ?? 'Keine'}</div>
+            <div className="hero-stat-value">
+              {currentRound?.title ?? 'Keine'}
+            </div>
           </div>
+
           <button type="button" className="button ghost" onClick={onLogout}>
             Ausloggen
           </button>
@@ -170,24 +189,33 @@ export default function AdminDashboard({
 
       {!configState.ok && <div className="notice error">{configState.message}</div>}
       {loadError && <div className="notice error">Fehler beim Laden: {loadError}</div>}
-      {message && <div className={message.type === 'success' ? 'notice success' : 'notice error'}>{message.text}</div>}
+      {message && (
+        <div className={message.type === 'success' ? 'notice success' : 'notice error'}>
+          {message.text}
+        </div>
+      )}
 
       <section className="stats-grid">
         <article className="info-card">
           <div className="stat-label">Aktuelle Runde</div>
           <div className="stat-value">{currentRound?.title || '—'}</div>
-          <div className="stat-sub">{currentRound ? statusLabel(currentRound.status) : 'Keine Runde live gesetzt'}</div>
+          <div className="stat-sub">
+            {currentRound ? statusLabel(currentRound.status) : 'Keine Runde live gesetzt'}
+          </div>
         </article>
+
         <article className="info-card">
           <div className="stat-label">Angelegte Umfragen</div>
           <div className="stat-value">{rounds.length}</div>
           <div className="stat-sub">inklusive Entwürfe und beendete Runden</div>
         </article>
+
         <article className="info-card">
           <div className="stat-label">Stimmen aktuell</div>
           <div className="stat-value">{currentVotes.length}</div>
-          <div className="stat-sub">abgegebene Jury-Votings</div>
+          <div className="stat-sub">abgegebene Votes der aktuellen Runde</div>
         </article>
+
         <article className="info-card">
           <div className="stat-label">Songs aktuell</div>
           <div className="stat-value">{currentRound?.songs_json?.length ?? 0}</div>
@@ -201,10 +229,12 @@ export default function AdminDashboard({
             <div>
               <h2 className="section-title">Neue Umfrage anlegen</h2>
               <p className="section-subtitle">
-                Titel, Zeitraum, Songs und Slug sind bereits vorbefüllt. Der Slug enthält automatisch das Datum.
+                Titel, Zeitraum, Songs und Slug sind bereits vorbefüllt. Der Slug
+                enthält automatisch das Datum.
               </p>
             </div>
           </div>
+
           <form className="form-stack" onSubmit={onCreateRound}>
             <div className="field">
               <label htmlFor="title">Titel</label>
@@ -236,6 +266,7 @@ export default function AdminDashboard({
                   required
                 />
               </div>
+
               <div className="field">
                 <label htmlFor="places">Platzanzahl</label>
                 <input
@@ -244,7 +275,12 @@ export default function AdminDashboard({
                   min={1}
                   max={50}
                   value={formState.places_count}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, places_count: event.target.value }))}
+                  onChange={(event) =>
+                    setFormState((prev) => ({
+                      ...prev,
+                      places_count: event.target.value,
+                    }))
+                  }
                   required
                 />
               </div>
@@ -255,7 +291,12 @@ export default function AdminDashboard({
               <input
                 id="description"
                 value={formState.description}
-                onChange={(event) => setFormState((prev) => ({ ...prev, description: event.target.value }))}
+                onChange={(event) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    description: event.target.value,
+                  }))
+                }
               />
             </div>
 
@@ -265,30 +306,47 @@ export default function AdminDashboard({
                 <select
                   id="status"
                   value={formState.status}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, status: event.target.value }))}
+                  onChange={(event) =>
+                    setFormState((prev) => ({
+                      ...prev,
+                      status: event.target.value,
+                    }))
+                  }
                 >
                   <option value="live">Live</option>
                   <option value="draft">Entwurf</option>
                   <option value="ended">Beendet</option>
                 </select>
               </div>
+
               <div className="field">
                 <label htmlFor="startAt">Start</label>
                 <input
                   id="startAt"
                   type="datetime-local"
                   value={formState.start_at}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, start_at: event.target.value }))}
+                  onChange={(event) =>
+                    setFormState((prev) => ({
+                      ...prev,
+                      start_at: event.target.value,
+                    }))
+                  }
                   required
                 />
               </div>
+
               <div className="field">
                 <label htmlFor="endAt">Ende</label>
                 <input
                   id="endAt"
                   type="datetime-local"
                   value={formState.end_at}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, end_at: event.target.value }))}
+                  onChange={(event) =>
+                    setFormState((prev) => ({
+                      ...prev,
+                      end_at: event.target.value,
+                    }))
+                  }
                   required
                 />
               </div>
@@ -299,13 +357,22 @@ export default function AdminDashboard({
               <textarea
                 id="songlist"
                 value={formState.songlist}
-                onChange={(event) => setFormState((prev) => ({ ...prev, songlist: event.target.value }))}
+                onChange={(event) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    songlist: event.target.value,
+                  }))
+                }
                 placeholder={'Songtitel – Interpret\nSongtitel – Interpret\nSongtitel – Interpret'}
                 required
               />
             </div>
 
-            <button className="button primary full" type="submit" disabled={isPending || !configState.ok}>
+            <button
+              className="button primary full"
+              type="submit"
+              disabled={isPending || !configState.ok}
+            >
               {isPending ? 'Speichert...' : 'Umfrage anlegen'}
             </button>
           </form>
@@ -315,27 +382,38 @@ export default function AdminDashboard({
           <div className="section-head">
             <div>
               <h2 className="section-title">Kurzübersicht</h2>
-              <p className="section-subtitle">Die wichtigsten Hinweise, damit neue Runden sofort sauber live gehen.</p>
+              <p className="section-subtitle">
+                Die wichtigsten Hinweise, damit neue Runden sofort sauber live gehen.
+              </p>
             </div>
           </div>
 
           <div className="meta-grid single-column-mobile">
             <div className="notice">
               <div className="small-text">1. Songs einfügen</div>
-              <div>Jede Zeile in der Form <strong>Songtitel – Interpret</strong>.</div>
+              <div>
+                Jede Zeile in der Form <strong>Songtitel – Interpret</strong>.
+              </div>
             </div>
+
             <div className="notice">
               <div className="small-text">2. Live starten</div>
-              <div>Wenn die Runde direkt sichtbar sein soll, Startzeit auf jetzt oder früher setzen.</div>
+              <div>
+                Wenn die Runde direkt sichtbar sein soll, Startzeit auf jetzt oder früher setzen.
+              </div>
             </div>
+
             <div className="notice">
               <div className="small-text">3. Link kopieren</div>
-              <div>In der Übersicht unten direkt auf <strong>Umfrage öffnen</strong> klicken.</div>
+              <div>
+                In der Übersicht unten direkt auf <strong>Umfrage öffnen</strong> klicken.
+              </div>
             </div>
           </div>
 
           <div className="notice warn" style={{ marginTop: 18 }}>
-            Öffentliche Seiten zeigen keinen Admin-Zugang. Der Verwaltungsbereich ist nur intern über <span className="mono">/admin/login</span> erreichbar.
+            Öffentliche Seiten zeigen keinen Admin-Zugang. Der Verwaltungsbereich
+            ist nur intern über <span className="mono">/admin/login</span> erreichbar.
           </div>
         </article>
       </section>
@@ -344,9 +422,12 @@ export default function AdminDashboard({
         <div className="section-head">
           <div>
             <h2 className="section-title">Alle Umfragen</h2>
-            <p className="section-subtitle">Mit Direktlink, Zeitraum und schnellen Aktionen pro Runde.</p>
+            <p className="section-subtitle">
+              Mit Direktlink, Zeitraum und schnellen Aktionen pro Runde.
+            </p>
           </div>
         </div>
+
         <div className="table-wrap">
           <table>
             <thead>
@@ -358,43 +439,74 @@ export default function AdminDashboard({
                 <th>Aktionen</th>
               </tr>
             </thead>
+
             <tbody>
               {rounds.length === 0 && (
                 <tr>
-                  <td colSpan={5}><div className="empty-state">Noch keine Umfragen vorhanden.</div></td>
+                  <td colSpan={5}>
+                    <div className="empty-state">Noch keine Umfragen vorhanden.</div>
+                  </td>
                 </tr>
               )}
+
               {rounds.map((round) => {
                 const publicPath = createPublicRoundPath(round.slug);
+
                 return (
                   <tr key={round.id}>
                     <td>
                       <div style={{ fontWeight: 700 }}>{round.title}</div>
                       <div className="mono">{round.slug}</div>
                     </td>
+
                     <td>
-                      <span className={`status-chip ${round.status}`}>{statusLabel(round.status)}</span>
-                      {round.is_current && <div className="small-text" style={{ marginTop: 8 }}>aktuelle Runde</div>}
+                      <span className={`status-chip ${round.status}`}>
+                        {statusLabel(round.status)}
+                      </span>
+                      {round.is_current && (
+                        <div className="small-text" style={{ marginTop: 8 }}>
+                          aktuelle Runde
+                        </div>
+                      )}
                     </td>
+
                     <td>
                       <div>{formatDateTime(round.start_at)}</div>
                       <div className="small-text">bis {formatDateTime(round.end_at)}</div>
                     </td>
+
                     <td>
                       <div className="link-list">
-                        <a href={publicPath} target="_blank" rel="noreferrer" className="button secondary small">Umfrage öffnen</a>
+                        <a
+                          href={publicPath}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="button secondary small"
+                        >
+                          Umfrage öffnen
+                        </a>
                         <div className="mono">{publicPath}</div>
                       </div>
                     </td>
+
                     <td>
                       <div className="inline-actions">
                         {!round.is_current && round.status !== 'ended' && (
-                          <button className="button success small" type="button" onClick={() => onSetCurrent(round.id)}>
+                          <button
+                            className="button success small"
+                            type="button"
+                            onClick={() => onSetCurrent(round.id)}
+                          >
                             Live setzen
                           </button>
                         )}
+
                         {round.status !== 'ended' && (
-                          <button className="button danger small" type="button" onClick={() => onEndRound(round.id)}>
+                          <button
+                            className="button danger small"
+                            type="button"
+                            onClick={() => onEndRound(round.id)}
+                          >
                             Beenden
                           </button>
                         )}
@@ -413,28 +525,37 @@ export default function AdminDashboard({
           <div className="section-head">
             <div>
               <h2 className="section-title">Ergebnisse der aktuellen Runde</h2>
-              <p className="section-subtitle">Sortierung nach Durchschnittspunkten, danach Gesamtpunkte und Anzahl der Wertungen.</p>
+              <p className="section-subtitle">
+                Sortiert nach Gesamtpunkten. Die Ø-Punkte werden zusätzlich über alle
+                Teilnehmer hinweg angezeigt.
+              </p>
             </div>
           </div>
+
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>#</th>
                   <th>Song</th>
-                  <th>Ø Punkte</th>
                   <th>Gesamt</th>
+                  <th>Ø Punkte</th>
                   <th>Wertungen</th>
                 </tr>
               </thead>
+
               <tbody>
                 {leaderboard.length === 0 && (
                   <tr>
-                    <td colSpan={5}><div className="empty-state">Noch keine Ergebnisse vorhanden.</div></td>
+                    <td colSpan={5}>
+                      <div className="empty-state">Noch keine Ergebnisse vorhanden.</div>
+                    </td>
                   </tr>
                 )}
+
                 {leaderboard.map((row) => {
                   const parts = splitSong(row.song);
+
                   return (
                     <tr key={row.song}>
                       <td>{row.rank}</td>
@@ -442,8 +563,8 @@ export default function AdminDashboard({
                         <div style={{ fontWeight: 700 }}>{parts.title}</div>
                         <div className="small-text">{parts.artist}</div>
                       </td>
-                      <td>{row.averagePoints.toFixed(2)}</td>
                       <td>{row.totalPoints}</td>
+                      <td>{row.averagePoints.toFixed(2)}</td>
                       <td>{row.voteCount}</td>
                     </tr>
                   );
@@ -457,9 +578,12 @@ export default function AdminDashboard({
           <div className="section-head">
             <div>
               <h2 className="section-title">Letzte Stimmen</h2>
-              <p className="section-subtitle">Die letzten 10 abgegebenen Jury-Votings der aktuellen Runde.</p>
+              <p className="section-subtitle">
+                Die letzten 10 abgegebenen Votes der aktuellen Runde.
+              </p>
             </div>
           </div>
+
           <div className="table-wrap">
             <table>
               <thead>
@@ -470,12 +594,16 @@ export default function AdminDashboard({
                   <th>Zeitpunkt</th>
                 </tr>
               </thead>
+
               <tbody>
                 {recentVotes.length === 0 && (
                   <tr>
-                    <td colSpan={4}><div className="empty-state">Noch keine Stimmen vorhanden.</div></td>
+                    <td colSpan={4}>
+                      <div className="empty-state">Noch keine Stimmen vorhanden.</div>
+                    </td>
                   </tr>
                 )}
+
                 {recentVotes.map((vote) => (
                   <tr key={vote.id}>
                     <td>{vote.juror_name || '—'}</td>
