@@ -168,6 +168,17 @@ export function getPublicRoundState(round: RoundRow | null | undefined): PublicR
   return 'live';
 }
 
+export function shuffleSongs(songs: string[]) {
+  const next = [...songs];
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    const temp = next[index];
+    next[index] = next[swapIndex];
+    next[swapIndex] = temp;
+  }
+  return next;
+}
+
 export function leaderboardFromVotes(songs: string[], votes: VoteRow[]): LeaderboardRow[] {
   const map = new Map<string, { totalPoints: number; voteCount: number }>();
   songs.forEach((song) => map.set(song, { totalPoints: 0, voteCount: 0 }));
@@ -197,8 +208,8 @@ export function leaderboardFromVotes(songs: string[], votes: VoteRow[]): Leaderb
       };
     })
     .sort((a, b) => {
-      if (b.averagePoints !== a.averagePoints) return b.averagePoints - a.averagePoints;
       if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+      if (b.averagePoints !== a.averagePoints) return b.averagePoints - a.averagePoints;
       if (b.voteCount !== a.voteCount) return b.voteCount - a.voteCount;
       return a.song.localeCompare(b.song, 'de');
     })
