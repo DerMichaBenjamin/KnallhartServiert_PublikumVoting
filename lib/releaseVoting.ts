@@ -42,6 +42,8 @@ export type LeaderboardRow = {
   averagePoints: number;
 };
 
+export type PublicRoundState = 'draft' | 'upcoming' | 'live' | 'ended';
+
 export function normalizeSlug(value: string) {
   return value
     .trim()
@@ -86,19 +88,37 @@ export function splitSong(entry: string) {
   };
 }
 
+export function combineSongLine(entry: string) {
+  const parts = splitSong(entry);
+  return parts.artist === '—' ? parts.title : `${parts.title} — ${parts.artist}`;
+}
+
+export function normalizeDateTimeValue(value: string | null | undefined) {
+  if (!value) return '';
+  return value.trim().replace(' ', 'T').slice(0, 16);
+}
+
 export function formatDateTime(value: string | null | undefined) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('de-DE', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(date);
+  const normalized = normalizeDateTimeValue(value);
+  if (!normalized) return '—';
+
+  const [datePart, timePart = '00:00'] = normalized.split('T');
+  const [year, month, day] = datePart.split('-');
+  if (!year || !month || !day) return value ?? '—';
+
+  return `${day}.${month}.${year}, ${timePart}`;
 }
 
 export function statusLabel(status: RoundRow['status']) {
   if (status === 'live') return 'Live';
   if (status === 'ended') return 'Beendet';
+  return 'Entwurf';
+}
+
+export function publicStatusLabel(state: PublicRoundState) {
+  if (state === 'live') return 'Live';
+  if (state === 'ended') return 'Beendet';
+  if (state === 'upcoming') return 'Startet bald';
   return 'Entwurf';
 }
 
@@ -118,6 +138,34 @@ export function createRoundDatePreset(date = new Date()) {
   const title = `Neue Songs der Woche ${displayDate}`;
   const slug = `neue-songs-${isoDate}`;
   return { title, slug, displayDate, isoDate };
+}
+
+export function getBerlinNowLocalValue() {
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Berlin',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  return formatter.format(new Date()).replace(' ', 'T');
+}
+
+export function getPublicRoundState(round: RoundRow | null | undefined): PublicRoundState {
+  if (!round) return 'draft';
+  if (round.status === 'ended') return 'ended';
+  if (round.status === 'draft') return 'draft';
+
+  const now = getBerlinNowLocalValue();
+  const start = normalizeDateTimeValue(round.start_at);
+  const end = normalizeDateTimeValue(round.end_at);
+
+  if (start && now < start) return 'upcoming';
+  if (end && now > end) return 'ended';
+  return 'live';
 }
 
 export function leaderboardFromVotes(songs: string[], votes: VoteRow[]): LeaderboardRow[] {
