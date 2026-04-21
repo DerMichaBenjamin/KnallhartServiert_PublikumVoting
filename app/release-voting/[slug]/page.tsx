@@ -1,4 +1,3 @@
-import { notFound } from 'next/navigation';
 import BrandLogo from '@/components/BrandLogo';
 import PublicVotingForm from '@/components/PublicVotingForm';
 import {
@@ -8,6 +7,7 @@ import {
   getVotesForRound,
   leaderboardFromVotes,
   publicStatusLabel,
+  shuffleSongs,
 } from '@/lib/releaseVoting';
 
 export const dynamic = 'force-dynamic';
@@ -16,91 +16,63 @@ export default async function VotingBySlugPage({ params }: { params: Promise<{ s
   const { slug } = await params;
   const roundResult = await getRoundBySlug(slug);
   const round = roundResult.data;
-
-  if (!round) {
-    notFound();
-  }
-
   const publicState = getPublicRoundState(round);
-  const votesResult = await getVotesForRound(round.id);
-  const leaderboard = publicState === 'ended' ? leaderboardFromVotes(round.songs_json ?? [], votesResult.data) : [];
+  const votesResult = round ? await getVotesForRound(round.id) : { data: [], error: null as string | null };
+  const leaderboard = round && publicState === 'ended' ? leaderboardFromVotes(round.songs_json ?? [], votesResult.data) : [];
+  const shuffledSongs = round ? shuffleSongs(round.songs_json ?? []) : [];
 
   return (
     <main className="public-shell light-surface">
       <div className="public-stack page-width public-friendly-gap">
-        <section className="hero-card public-hero public-hero-light compact-hero-light">
-          <BrandLogo compact />
-          <div className="pill pill-soft">Direktlink zur Umfrage</div>
-          <h1 className="hero-title public-hero-title">{round.title}</h1>
-          <p className="hero-copy public-hero-copy">{round.description || 'Bewerte die Songs dieser Runde.'}</p>
+        <section className="hero-card public-hero public-hero-light">
+          <BrandLogo />
+          <div className="pill pill-soft">Publikums-Voting</div>
+          <h1 className="hero-title public-hero-title">Knallhart serviert Publikums-Voting</h1>
+          <p className="hero-copy public-hero-copy">Wähle deine Top 12. Platz 1 gibt die meisten Punkte, Platz 12 noch einen Punkt.</p>
         </section>
 
-        <section className="public-single-column">
-          <section className="table-card elevated-card public-card-light">
-            <div className="meta-grid public-meta-grid public-meta-light">
-              <div className="notice notice-light">
-                <div className="small-text">Status</div>
-                <div>{publicStatusLabel(publicState)}</div>
-              </div>
-              <div className="notice notice-light">
-                <div className="small-text">Start</div>
-                <div>{formatDateTime(round.start_at)}</div>
-              </div>
-              <div className="notice notice-light">
-                <div className="small-text">Ende</div>
-                <div>{formatDateTime(round.end_at)}</div>
-              </div>
-            </div>
+        {!round && <section className="table-card elevated-card public-card-light"><div className="empty-state public-empty-state">Diese Abstimmung wurde nicht gefunden.</div></section>}
 
-            {publicState === 'upcoming' && (
-              <div className="notice warn notice-light soft-warning">
-                Die Abstimmung startet am <strong>{formatDateTime(round.start_at)}</strong>.
-              </div>
-            )}
-
-            {publicState === 'live' && (
-              <PublicVotingForm roundId={round.id} roundTitle={round.title} placesCount={round.places_count} songs={round.songs_json ?? []} />
-            )}
-
-            {publicState === 'ended' && (
-              <div className="form-stack">
-                <div className="notice success notice-light">
-                  Die Abstimmung ist beendet. Hier siehst du den finalen Endstand des User-Votings.
+        {round && (
+          <section className="public-single-column">
+            <div className="table-card elevated-card public-card-light">
+              <div className="section-head compact-gap">
+                <div>
+                  <h2 className="section-title">{round.title}</h2>
+                  <p className="section-subtitle">{round.description || 'Wähle einfach deine 12 stärksten Songs.'}</p>
                 </div>
-                <section className="table-card result-card-light">
-                  <div className="section-head compact-gap">
-                    <div>
-                      <h3 className="section-title">Endstand User-Voting</h3>
-                      <p className="section-subtitle">Keine Zwischenstände während der laufenden Abstimmung – nur der finale Endstand.</p>
-                    </div>
-                  </div>
-
-                  {leaderboard.length === 0 && <div className="empty-state public-empty-state">Noch keine Stimmen abgegeben.</div>}
-                  {leaderboard.length > 0 && (
-                    <div className="results-list results-list-light">
-                      {leaderboard.map((row) => (
-                        <div className="result-row result-row-light" key={row.song}>
-                          <div className="rank-badge rank-badge-light">{row.rank}</div>
-                          <div className="result-main-line">
-                            <div className="song-line compact-song-line">{row.title} — {row.artist}</div>
-                          </div>
-                          <div>
-                            <div className="small-text">Ø Punkte</div>
-                            <div>{row.averagePoints.toFixed(2)}</div>
-                          </div>
-                          <div>
-                            <div className="small-text">Gesamt</div>
-                            <div>{row.totalPoints}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
+                <div className={`status-chip ${publicState === 'live' ? 'live' : publicState === 'ended' ? 'ended' : 'draft'}`}>
+                  {publicStatusLabel(publicState)}
+                </div>
               </div>
-            )}
+
+              <div className="meta-grid public-meta-grid compact-meta-grid">
+                <div className="notice notice-light compact-notice"><div className="small-text">Zeitraum</div><div>{formatDateTime(round.start_at)} bis {formatDateTime(round.end_at)}</div></div>
+                <div className="notice notice-light compact-notice"><div className="small-text">Songs</div><div>{round.songs_json?.length ?? 0}</div></div>
+                <div className="notice notice-light compact-notice"><div className="small-text">Plätze</div><div>{round.places_count}</div></div>
+              </div>
+
+              {publicState === 'upcoming' && <div className="notice warn notice-light">Diese Abstimmung startet am {formatDateTime(round.start_at)}.</div>}
+              {publicState === 'live' && <PublicVotingForm roundId={round.id} roundTitle={round.title} placesCount={round.places_count} songs={shuffledSongs} />}
+              {publicState === 'ended' && (
+                <div className="results-block">
+                  <div className="section-head compact-gap"><div><h3 className="section-title results-title">Endstand User-Voting</h3><p className="section-subtitle">Sortiert nach Gesamtpunkten. Der Durchschnitt bleibt zur Einordnung sichtbar.</p></div></div>
+                  <div className="results-list compact-results-list">
+                    {leaderboard.length === 0 && <div className="empty-state public-empty-state">Noch keine Stimmen vorhanden.</div>}
+                    {leaderboard.map((row) => (
+                      <div key={row.song} className="result-row result-row-light compact-result-row">
+                        <div className="rank-badge rank-badge-light">{row.rank}</div>
+                        <div className="result-main-line"><span className="result-song-line">{row.title}{row.artist !== '—' ? ` — ${row.artist}` : ''}</span></div>
+                        <div className="result-metric"><div className="metric-label">Gesamt</div><div className="metric-value">{row.totalPoints}</div></div>
+                        <div className="result-metric"><div className="metric-label">Ø</div><div className="metric-value">{row.averagePoints.toFixed(2)}</div></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </section>
-        </section>
+        )}
       </div>
     </main>
   );
