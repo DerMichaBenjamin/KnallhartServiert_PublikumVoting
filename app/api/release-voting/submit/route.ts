@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
+import { getPublicRoundState } from '@/lib/releaseVoting';
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
@@ -20,13 +21,15 @@ export async function POST(request: NextRequest) {
   if (!roundQuery.data) return NextResponse.json({ ok: false, error: 'Umfrage nicht gefunden.' }, { status: 404 });
 
   const round = roundQuery.data;
-  if (round.status !== 'live') return NextResponse.json({ ok: false, error: 'Diese Umfrage ist nicht live.' }, { status: 400 });
+  const publicState = getPublicRoundState(round);
 
-  const now = Date.now();
-  if (new Date(round.start_at).getTime() > now) {
+  if (publicState === 'draft') {
+    return NextResponse.json({ ok: false, error: 'Diese Umfrage ist noch nicht freigegeben.' }, { status: 400 });
+  }
+  if (publicState === 'upcoming') {
     return NextResponse.json({ ok: false, error: 'Diese Umfrage hat noch nicht begonnen.' }, { status: 400 });
   }
-  if (new Date(round.end_at).getTime() < now) {
+  if (publicState === 'ended') {
     return NextResponse.json({ ok: false, error: 'Diese Umfrage ist bereits beendet.' }, { status: 400 });
   }
 
