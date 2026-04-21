@@ -3,6 +3,20 @@ import { ensureAdminRequest } from '@/lib/adminAuth';
 import { getConfigState, getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import { normalizeSlug, parseSongList } from '@/lib/releaseVoting';
 
+async function createUniqueSlug(baseSlug: string, supabase: NonNullable<ReturnType<typeof getSupabaseAdminClient>>) {
+  const normalized = normalizeSlug(baseSlug);
+  let candidate = normalized;
+  let counter = 2;
+
+  while (true) {
+    const existing = await supabase.from('release_voting_rounds').select('id').eq('slug', candidate).maybeSingle();
+    if (existing.error) throw new Error(existing.error.message);
+    if (!existing.data) return candidate;
+    candidate = `${normalized}-${String(counter).padStart(2, '0')}`;
+    counter += 1;
+  }
+}
+
 export async function POST(request: NextRequest) {
   const auth = ensureAdminRequest(request);
   if (!auth.ok) {
@@ -16,7 +30,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => ({}));
   const title = String(body.title ?? '').trim();
-  const slug = normalizeSlug(String(body.slug ?? '').trim() || title);
+  const requestedSlug = normalizeSlug(String(body.slug ?? '').trim() || title);
   const description = String(body.description ?? '').trim() || null;
   const status = String(body.status ?? 'live').trim() as 'draft' | 'live' | 'ended';
   const startAt = String(body.start_at ?? '').trim();
@@ -25,7 +39,7 @@ export async function POST(request: NextRequest) {
   const songs = parseSongList(String(body.songlist ?? ''));
 
   if (!title) return NextResponse.json({ ok: false, error: 'Bitte einen Titel eingeben.' }, { status: 400 });
-  if (!slug) return NextResponse.json({ ok: false, error: 'Bitte einen gültigen Slug eingeben.' }, { status: 400 });
+  if (!requestedSlug) return NextResponse.json({ ok: false, error: 'Bitte einen gültigen Slug eingeben.' }, { status: 400 });
   if (!['draft', 'live', 'ended'].includes(status)) return NextResponse.json({ ok: false, error: 'Ungültiger Status.' }, { status: 400 });
   if (!startAt || !endAt) return NextResponse.json({ ok: false, error: 'Bitte Start- und Enddatum angeben.' }, { status: 400 });
   if (Number.isNaN(new Date(startAt).getTime()) || Number.isNaN(new Date(endAt).getTime())) {
@@ -37,9 +51,7 @@ export async function POST(request: NextRequest) {
   if (!Number.isInteger(placesCount) || placesCount < 1 || placesCount > 50) {
     return NextResponse.json({ ok: false, error: 'Die Platzanzahl muss zwischen 1 und 50 liegen.' }, { status: 400 });
   }
-  if (songs.length === 0) {
-    return NextResponse.json({ ok: false, error: 'Bitte mindestens einen Song eintragen.' }, { status: 400 });
-  }
+  if (songs.length === 0) return NextResponse.json({ ok: false, error: 'Bitte mindestens einen Song eintragen.' }, { status: 400 });
   if (songs.length < placesCount) {
     return NextResponse.json({ ok: false, error: `Es sind nur ${songs.length} Songs vorhanden, aber ${placesCount} Plätze eingestellt.` }, { status: 400 });
   }
@@ -47,9 +59,9 @@ export async function POST(request: NextRequest) {
   const supabase = getSupabaseAdminClient();
   if (!supabase) return NextResponse.json({ ok: false, error: 'Supabase-Client konnte nicht erstellt werden.' }, { status: 500 });
 
-  const slugCheck = await supabase.from('release_voting_rounds').select('id').eq('slug', slug).maybeSingle();
-  if (slugCheck.error) return NextResponse.json({ ok: false, error: slugCheck.error.message }, { status: 500 });
-  if (slugCheck.data) return NextResponse.json({ ok: false, error: 'Dieser Slug existiert bereits.' }, { status: 400 });
+  const slug = await createUniqueSlug(requestedSlug, supabase).catch((error) => {
+    throw error;
+  });
 
   if (status === 'live') {
     const unset = await supabase.from('release_voting_rounds').update({ is_current: false }).eq('is_current', true);
