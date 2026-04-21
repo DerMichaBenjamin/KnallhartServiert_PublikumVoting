@@ -1,53 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from "@supabase/supabase-js";
 
-export const ADMIN_COOKIE_NAME = 'khs_admin_session';
-const ADMIN_COOKIE_VALUE = 'ok';
+export function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-export function hasAdminPasswordConfigured() {
-  return Boolean(process.env.ADMIN_PASSWORD && process.env.ADMIN_PASSWORD.trim());
-}
-
-export function isValidAdminPassword(password: string) {
-  const configured = process.env.ADMIN_PASSWORD ?? '';
-  return Boolean(configured) && password === configured;
-}
-
-export function isAdminAuthenticated(request: NextRequest) {
-  return request.cookies.get(ADMIN_COOKIE_NAME)?.value === ADMIN_COOKIE_VALUE;
-}
-
-export function ensureAdminRequest(request: NextRequest) {
-  if (!hasAdminPasswordConfigured()) {
-    return { ok: false as const, error: 'ADMIN_PASSWORD fehlt in den Environment Variables.' };
+  if (!url) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL fehlt.");
   }
 
-  if (!isAdminAuthenticated(request)) {
-    return { ok: false as const, error: 'Nicht autorisiert.' };
+  if (!serviceRoleKey) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY fehlt.");
   }
 
-  return { ok: true as const };
+  return createClient(url, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
 }
 
-export function createAdminLoginResponse() {
-  const response = NextResponse.json({ ok: true });
-  response.cookies.set(ADMIN_COOKIE_NAME, ADMIN_COOKIE_VALUE, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: 60 * 60 * 12,
-  });
-  return response;
-}
-
-export function createAdminLogoutResponse() {
-  const response = NextResponse.json({ ok: true });
-  response.cookies.set(ADMIN_COOKIE_NAME, '', {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: 0,
-  });
-  return response;
-}
+export default getSupabaseAdmin;
