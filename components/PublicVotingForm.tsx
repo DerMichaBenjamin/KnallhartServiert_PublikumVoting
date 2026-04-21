@@ -29,7 +29,6 @@ export default function PublicVotingForm({
   const [ranking, setRanking] = useState<(string | null)[]>(
     () => Array.from({ length: placesCount }, () => null)
   );
-  const [activeSlot, setActiveSlot] = useState<number | null>(0);
   const [message, setMessage] = useState<MessageState>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -61,9 +60,6 @@ export default function PublicVotingForm({
   const filledSlots = rankedSongs.length;
   const isComplete = filledSlots === placesCount;
 
-  const effectiveTargetIndex =
-    activeSlot !== null ? activeSlot : firstFreeIndex >= 0 ? firstFreeIndex : null;
-
   function setSongAtIndex(song: string, targetIndex: number) {
     setRanking((prev) => {
       const next = [...prev];
@@ -83,17 +79,11 @@ export default function PublicVotingForm({
       next[targetIndex] = song;
       return next;
     });
-
-    setActiveSlot(targetIndex);
   }
 
   function addSongByClick(song: string) {
-    const targetIndex =
-      activeSlot !== null ? activeSlot : firstFreeIndex >= 0 ? firstFreeIndex : null;
-
-    if (targetIndex === null) return;
-
-    setSongAtIndex(song, targetIndex);
+    if (firstFreeIndex < 0) return;
+    setSongAtIndex(song, firstFreeIndex);
   }
 
   function removeFromSlot(index: number) {
@@ -102,8 +92,6 @@ export default function PublicVotingForm({
       next[index] = null;
       return next;
     });
-
-    setActiveSlot(index);
   }
 
   function moveSlot(index: number, direction: -1 | 1) {
@@ -117,8 +105,6 @@ export default function PublicVotingForm({
       next[targetIndex] = temp;
       return next;
     });
-
-    setActiveSlot(targetIndex);
   }
 
   function serializePayload(payload: DragPayload) {
@@ -215,7 +201,6 @@ export default function PublicVotingForm({
       setJurorInstagram('');
       setQuery('');
       setRanking(Array.from({ length: placesCount }, () => null));
-      setActiveSlot(0);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       setMessage({
@@ -233,8 +218,9 @@ export default function PublicVotingForm({
   return (
     <form className="form-stack public-form-improved" onSubmit={onSubmit}>
       <div className="notice notice-light compact-instructions">
-        <strong>So geht’s:</strong> Platz anklicken, Song per Klick oder Drag & Drop
-        einfügen, Reihenfolge anpassen, absenden.
+        <strong>So funktioniert’s:</strong> Mit <strong>+</strong> landet ein Song automatisch
+        auf dem nächsten freien Platz. Per Drag & Drop oder mit ↑ / ↓ kannst du dein Ranking
+        danach weiter verschieben.
       </div>
 
       <div className="grid-3 compact-user-grid">
@@ -283,13 +269,98 @@ export default function PublicVotingForm({
         </div>
       )}
 
-      <div className="voting-layout voting-layout-improved">
-        <section className="table-card voting-panel public-card-soft">
+      <div className="voting-layout voting-layout-simpler">
+        <section className="table-card voting-panel public-card-soft ranking-panel-first">
+          <div className="section-head compact-gap">
+            <div>
+              <h2 className="section-title compact-title">Deine Top 12</h2>
+              <p className="section-subtitle">
+                Oben gibt es die meisten Punkte. Sobald alle Plätze belegt sind, kannst du direkt absenden.
+              </p>
+            </div>
+            <div className="progress-pill">
+              {filledSlots}/{placesCount}
+            </div>
+          </div>
+
+          <div className="panel-scroll ranking-panel-scroll">
+            <div className="rank-slots compact-rank-slots improved-rank-slots">
+              {pointValues.map((points, index) => {
+                const song = ranking[index];
+
+                return (
+                  <div
+                    key={points}
+                    className={`rank-slot compact-rank-slot improved-rank-slot${song ? ' filled' : ''}`}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => onDropOnSlot(event, index)}
+                  >
+                    <div className="rank-slot-topline">
+                      <div className="rank-slot-points">{points} P</div>
+                      <div className="rank-slot-position">Platz {index + 1}</div>
+                    </div>
+
+                    {!song && (
+                      <div className="rank-slot-empty">
+                        Ziehe einen Song hierhin oder füge ihn mit + hinzu.
+                      </div>
+                    )}
+
+                    {song && (
+                      <div
+                        draggable
+                        onDragStart={(event) => {
+                          event.dataTransfer.setData(
+                            'application/json',
+                            serializePayload({ kind: 'slot', song, index })
+                          );
+                        }}
+                        className="rank-slot-song compact-rank-song"
+                      >
+                        <div className="song-line">{combineSongLine(song)}</div>
+
+                        <div className="slot-actions">
+                          <button
+                            type="button"
+                            className="button ghost tiny"
+                            onClick={() => moveSlot(index, -1)}
+                            disabled={index === 0}
+                          >
+                            ↑
+                          </button>
+
+                          <button
+                            type="button"
+                            className="button ghost tiny"
+                            onClick={() => moveSlot(index, 1)}
+                            disabled={index === ranking.length - 1}
+                          >
+                            ↓
+                          </button>
+
+                          <button
+                            type="button"
+                            className="button ghost tiny"
+                            onClick={() => removeFromSlot(index)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section className="table-card voting-panel public-card-soft available-panel-second">
           <div className="section-head compact-gap">
             <div>
               <h2 className="section-title compact-title">Songs zur Auswahl</h2>
               <p className="section-subtitle">
-                Klick auf <strong>+</strong> setzt den Song in den markierten Platz.
+                Mit <strong>+</strong> wird der Song auf den nächsten freien Platz gesetzt.
               </p>
             </div>
             <div className="progress-pill neutral">{availableSongs.length}</div>
@@ -306,11 +377,11 @@ export default function PublicVotingForm({
           </div>
 
           <div className="target-hint">
-            {effectiveTargetIndex !== null ? (
+            {firstFreeIndex >= 0 ? (
               <>
-                Aktiver Zielplatz:{' '}
+                Nächster freier Platz:{' '}
                 <strong>
-                  #{effectiveTargetIndex + 1} · {pointValues[effectiveTargetIndex]} Punkte
+                  #{firstFreeIndex + 1} · {pointValues[firstFreeIndex]} Punkte
                 </strong>
               </>
             ) : (
@@ -338,125 +409,23 @@ export default function PublicVotingForm({
                     );
                   }}
                 >
-                  <button
-                    type="button"
-                    className="available-card-main"
-                    onClick={() => addSongByClick(song)}
-                    disabled={effectiveTargetIndex === null}
-                    title="In den aktiven Platz einfügen"
-                  >
+                  <div className="available-card-main static-song-card">
                     <span className="song-line">{combineSongLine(song)}</span>
-                  </button>
+                  </div>
 
                   <div className="available-actions">
                     <button
                       type="button"
                       className="button secondary small compact-add-button"
                       onClick={() => addSongByClick(song)}
-                      disabled={effectiveTargetIndex === null}
-                      title="In den aktiven Platz einfügen"
+                      disabled={firstFreeIndex < 0}
+                      title="Zum nächsten freien Platz hinzufügen"
                     >
                       +
                     </button>
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="table-card voting-panel public-card-soft">
-          <div className="section-head compact-gap">
-            <div>
-              <h2 className="section-title compact-title">Deine 12 Plätze</h2>
-              <p className="section-subtitle">
-                Platz anklicken = aktives Ziel. Oben = mehr Punkte.
-              </p>
-            </div>
-            <div className="progress-pill">{filledSlots}/{placesCount}</div>
-          </div>
-
-          <div className="panel-scroll ranking-panel-scroll">
-            <div className="rank-slots compact-rank-slots improved-rank-slots">
-              {pointValues.map((points, index) => {
-                const song = ranking[index];
-                const isActive = activeSlot === index;
-
-                return (
-                  <div
-                    key={points}
-                    className={`rank-slot compact-rank-slot improved-rank-slot${
-                      song ? ' filled' : ''
-                    }${isActive ? ' targeted' : ''}`}
-                    onClick={() => setActiveSlot(index)}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={(event) => onDropOnSlot(event, index)}
-                  >
-                    <div className="rank-slot-topline">
-                      <div className="rank-slot-points">{points} P</div>
-                      <div className="rank-slot-position">Platz {index + 1}</div>
-                    </div>
-
-                    {!song && (
-                      <div className="rank-slot-empty">
-                        {isActive ? 'Hier wird per Klick eingefügt' : 'Platz auswählen oder Song ablegen'}
-                      </div>
-                    )}
-
-                    {song && (
-                      <div
-                        draggable
-                        onDragStart={(event) => {
-                          event.dataTransfer.setData(
-                            'application/json',
-                            serializePayload({ kind: 'slot', song, index })
-                          );
-                        }}
-                        className="rank-slot-song compact-rank-song"
-                      >
-                        <div className="song-line">{combineSongLine(song)}</div>
-
-                        <div className="slot-actions">
-                          <button
-                            type="button"
-                            className="button ghost tiny"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              moveSlot(index, -1);
-                            }}
-                            disabled={index === 0}
-                          >
-                            ↑
-                          </button>
-
-                          <button
-                            type="button"
-                            className="button ghost tiny"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              moveSlot(index, 1);
-                            }}
-                            disabled={index === ranking.length - 1}
-                          >
-                            ↓
-                          </button>
-
-                          <button
-                            type="button"
-                            className="button ghost tiny"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              removeFromSlot(index);
-                            }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
             </div>
           </div>
         </section>
