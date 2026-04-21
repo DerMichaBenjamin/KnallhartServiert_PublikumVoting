@@ -81,7 +81,7 @@ export default function PublicVotingForm({
     });
   }
 
-  function addSongByClick(song: string) {
+  function addSongToNextFree(song: string) {
     if (firstFreeIndex < 0) return;
     setSongAtIndex(song, firstFreeIndex);
   }
@@ -218,9 +218,9 @@ export default function PublicVotingForm({
   return (
     <form className="form-stack public-form-improved" onSubmit={onSubmit}>
       <div className="notice notice-light compact-instructions">
-        <strong>So funktioniert’s:</strong> Mit <strong>+</strong> landet ein Song automatisch
-        auf dem nächsten freien Platz. Per Drag & Drop oder mit ↑ / ↓ kannst du dein Ranking
-        danach weiter verschieben.
+        <strong>So geht’s:</strong> Song antippen oder <strong>+</strong> drücken =
+        nächster freier Platz. Danach kannst du dein Ranking per Drag & Drop oder mit
+        <strong> ↑ / ↓ </strong> anpassen.
       </div>
 
       <div className="grid-3 compact-user-grid">
@@ -269,13 +269,13 @@ export default function PublicVotingForm({
         </div>
       )}
 
-      <div className="voting-layout voting-layout-simpler">
+      <div className="voting-layout voting-layout-mobile-2col">
         <section className="table-card voting-panel public-card-soft ranking-panel-first">
           <div className="section-head compact-gap">
             <div>
               <h2 className="section-title compact-title">Deine Top 12</h2>
               <p className="section-subtitle">
-                Oben gibt es die meisten Punkte. Sobald alle Plätze belegt sind, kannst du direkt absenden.
+                Oben gibt es die meisten Punkte.
               </p>
             </div>
             <div className="progress-pill">
@@ -283,7 +283,7 @@ export default function PublicVotingForm({
             </div>
           </div>
 
-          <div className="panel-scroll ranking-panel-scroll">
+          <div className="panel-scroll ranking-panel-scroll mobile-tight-scroll">
             <div className="rank-slots compact-rank-slots improved-rank-slots">
               {pointValues.map((points, index) => {
                 const song = ranking[index];
@@ -297,12 +297,12 @@ export default function PublicVotingForm({
                   >
                     <div className="rank-slot-topline">
                       <div className="rank-slot-points">{points} P</div>
-                      <div className="rank-slot-position">Platz {index + 1}</div>
+                      <div className="rank-slot-position">#{index + 1}</div>
                     </div>
 
                     {!song && (
                       <div className="rank-slot-empty">
-                        Ziehe einen Song hierhin oder füge ihn mit + hinzu.
+                        Song hier ablegen oder rechts antippen.
                       </div>
                     )}
 
@@ -358,9 +358,9 @@ export default function PublicVotingForm({
         <section className="table-card voting-panel public-card-soft available-panel-second">
           <div className="section-head compact-gap">
             <div>
-              <h2 className="section-title compact-title">Songs zur Auswahl</h2>
+              <h2 className="section-title compact-title">Songs</h2>
               <p className="section-subtitle">
-                Mit <strong>+</strong> wird der Song auf den nächsten freien Platz gesetzt.
+                Tippen, <strong>+</strong> oder Drag & Drop.
               </p>
             </div>
             <div className="progress-pill neutral">{availableSongs.length}</div>
@@ -379,17 +379,14 @@ export default function PublicVotingForm({
           <div className="target-hint">
             {firstFreeIndex >= 0 ? (
               <>
-                Nächster freier Platz:{' '}
-                <strong>
-                  #{firstFreeIndex + 1} · {pointValues[firstFreeIndex]} Punkte
-                </strong>
+                Nächster freier Platz: <strong>#{firstFreeIndex + 1}</strong>
               </>
             ) : (
               <>Alle Plätze sind belegt.</>
             )}
           </div>
 
-          <div className="panel-scroll available-panel-scroll">
+          <div className="panel-scroll available-panel-scroll mobile-tight-scroll">
             <div className="available-list compact-available-list">
               {availableSongs.length === 0 && (
                 <div className="empty-state public-empty-state">
@@ -409,15 +406,21 @@ export default function PublicVotingForm({
                     );
                   }}
                 >
-                  <div className="available-card-main static-song-card">
+                  <button
+                    type="button"
+                    className="available-card-main available-card-main-clickable"
+                    onClick={() => addSongToNextFree(song)}
+                    disabled={firstFreeIndex < 0}
+                    title="Zum nächsten freien Platz hinzufügen"
+                  >
                     <span className="song-line">{combineSongLine(song)}</span>
-                  </div>
+                  </button>
 
                   <div className="available-actions">
                     <button
                       type="button"
                       className="button secondary small compact-add-button"
-                      onClick={() => addSongByClick(song)}
+                      onClick={() => addSongToNextFree(song)}
                       disabled={firstFreeIndex < 0}
                       title="Zum nächsten freien Platz hinzufügen"
                     >
