@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation';
 
-export default function AdminIndexPage() {
-  redirect("/admin/release-voting");
+export default function AdminPage() {
+  redirect('/admin/release-voting');
 }

@@ -13,12 +13,9 @@ export async function POST(request: NextRequest) {
   const supabase = getSupabaseAdminClient();
   if (!supabase) return NextResponse.json({ ok: false, error: 'Supabase-Client konnte nicht erstellt werden.' }, { status: 500 });
 
-  const unset = await supabase.from('release_voting_rounds').update({ is_current: false }).eq('is_current', true);
-  if (unset.error) return NextResponse.json({ ok: false, error: unset.error.message }, { status: 500 });
-
   const update = await supabase
     .from('release_voting_rounds')
-    .update({ is_current: true, status: 'live', ended_at: null })
+    .update({ is_current: false, status: 'ended', ended_at: new Date().toISOString() })
     .eq('id', roundId)
     .select('*')
     .single();

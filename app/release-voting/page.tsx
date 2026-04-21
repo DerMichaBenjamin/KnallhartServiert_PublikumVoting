@@ -1,85 +1,97 @@
-export const dynamic = "force-dynamic";
+import BrandLogo from '@/components/BrandLogo';
+import PublicVotingForm from '@/components/PublicVotingForm';
+import { createPublicRoundPath, formatDateTime, getCurrentRound, getVotesForRound, leaderboardFromVotes, statusLabel } from '@/lib/releaseVoting';
 
-import Link from "next/link";
-import PublicVotingForm from "@/components/PublicVotingForm";
-import { badgeClass, badgeText, formatDateTime, getCurrentPoll } from "@/lib/releaseVoting";
+export const dynamic = 'force-dynamic';
 
-export default async function ReleaseVotingPage() {
-  const poll = await getCurrentPoll();
+export default async function CurrentVotingPage() {
+  const roundResult = await getCurrentRound();
+  const round = roundResult.data;
+  const votesResult = round ? await getVotesForRound(round.id) : { data: [], error: null as string | null };
+  const leaderboard = round ? leaderboardFromVotes(round.songs_json ?? [], votesResult.data) : [];
 
   return (
-    <main className="page">
-      <div className="hero">
-        <div>
-          <div className="small-label">Öffentliche Seite</div>
-          <h1>Release Voting</h1>
-          <p>
-            Hier sehen alle Juroren sofort die aktuell gesetzte Runde. Es gibt keine zweite,
-            abweichende Status-Logik. Was im Admin als aktuelle Live-Runde gesetzt wird, erscheint
-            genau hier.
+    <main className="public-shell">
+      <div className="public-stack page-width">
+        <section className="hero-card public-hero">
+          <BrandLogo />
+          <div className="pill">Publikum & Jury Voting</div>
+          <h1 className="hero-title">Aktuelle Knallhart-Serviert-Abstimmung</h1>
+          <p className="hero-copy">
+            Stimme übersichtlich und fair ab. Die Punktzahlen sind bereits fest an die Plätze gebunden – so kann jede Wertung nur einmal vergeben werden.
           </p>
-        </div>
-        <Link className="topbar-link" href="/admin/release-voting">
-          Zum Admin-Bereich
-        </Link>
+        </section>
+
+        {!round && (
+          <section className="table-card elevated-card">
+            <div className="empty-state">
+              Aktuell ist keine Umfrage live. Bitte später noch einmal auf dieser Seite nachsehen.
+            </div>
+          </section>
+        )}
+
+        {round && (
+          <div className="public-grid">
+            <section className="table-card elevated-card">
+              <div className="section-head">
+                <div>
+                  <h2 className="section-title">{round.title}</h2>
+                  <p className="section-subtitle">{round.description || 'Bewerte deine persönlichen Favoriten dieser Runde.'}</p>
+                </div>
+              </div>
+
+              <div className="meta-grid public-meta-grid">
+                <div className="notice">
+                  <div className="small-text">Status</div>
+                  <div>{statusLabel(round.status)}</div>
+                </div>
+                <div className="notice">
+                  <div className="small-text">Zeitraum</div>
+                  <div>{formatDateTime(round.start_at)} bis {formatDateTime(round.end_at)}</div>
+                </div>
+                <div className="notice">
+                  <div className="small-text">Direktlink</div>
+                  <div className="mono">{createPublicRoundPath(round.slug)}</div>
+                </div>
+              </div>
+
+              <PublicVotingForm roundId={round.id} roundTitle={round.title} placesCount={round.places_count} songs={round.songs_json ?? []} />
+            </section>
+
+            <aside className="table-card elevated-card">
+              <div className="section-head compact-gap">
+                <div>
+                  <h2 className="section-title">Zwischenstand</h2>
+                  <p className="section-subtitle">Sortiert nach Durchschnittspunkten.</p>
+                </div>
+              </div>
+
+              {leaderboard.length === 0 && <div className="empty-state">Noch keine Stimmen abgegeben.</div>}
+              {leaderboard.length > 0 && (
+                <div className="results-list">
+                  {leaderboard.map((row) => (
+                    <div className="result-row" key={row.song}>
+                      <div className="rank-badge">{row.rank}</div>
+                      <div>
+                        <div className="song-name">{row.title}</div>
+                        <div className="song-artist">{row.artist}</div>
+                      </div>
+                      <div>
+                        <div className="small-text">Ø Punkte</div>
+                        <div>{row.averagePoints.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div className="small-text">Gesamt</div>
+                        <div>{row.totalPoints}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </aside>
+          </div>
+        )}
       </div>
-
-      {!poll ? (
-        <div className="card">
-          <h2>Momentan keine aktive Umfrage</h2>
-          <p className="muted">Im Admin wurde noch keine aktuelle Live-Runde gesetzt.</p>
-        </div>
-      ) : (
-        <>
-          <section className="grid grid-3" style={{ marginBottom: 18 }}>
-            <div className="card">
-              <div className="small-label">Aktuelle Runde</div>
-              <div className="metric">{poll.title}</div>
-            </div>
-            <div className="card">
-              <div className="small-label">Status</div>
-              <div style={{ marginTop: 10 }}>
-                <span className={badgeClass(poll.status)}>{badgeText(poll.status)}</span>
-              </div>
-            </div>
-            <div className="card">
-              <div className="small-label">Voting läuft bis</div>
-              <div className="metric">{formatDateTime(poll.end_at)}</div>
-            </div>
-          </section>
-
-          <section className="grid grid-2">
-            <div className="card">
-              <h2>{poll.title}</h2>
-              <p className="muted">{poll.description || "Keine Beschreibung eingetragen."}</p>
-              <div style={{ marginTop: 16 }}>
-                <div className="small-label">Direkter Link zu dieser Runde</div>
-                <div style={{ fontWeight: 700 }}>/release-voting/{poll.slug}</div>
-              </div>
-              <div style={{ marginTop: 16 }}>
-                <div className="small-label">Start</div>
-                <div>{formatDateTime(poll.start_at)}</div>
-              </div>
-              <div style={{ marginTop: 16 }}>
-                <div className="small-label">Ende</div>
-                <div>{formatDateTime(poll.end_at)}</div>
-              </div>
-              <div style={{ marginTop: 16 }}>
-                <div className="small-label">Songs</div>
-                <div>{poll.songs_json.length}</div>
-              </div>
-            </div>
-
-            <PublicVotingForm
-              pollId={poll.id}
-              pollTitle={poll.title}
-              placesCount={poll.places_count}
-              songs={poll.songs_json}
-            />
-          </section>
-        </>
-      )}
-      <div className="footer-space" />
     </main>
   );
 }

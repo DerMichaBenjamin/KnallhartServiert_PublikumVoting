@@ -1,9 +1,9 @@
-import "./globals.css";
-import type { Metadata } from "next";
+import './globals.css';
+import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: "Release Voting",
-  description: "Jury-Voting für neue Musik-Releases"
+  title: 'Knallhart Serviert – Release Voting',
+  description: 'Jury-Voting für aktuelle Musik-Releases',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

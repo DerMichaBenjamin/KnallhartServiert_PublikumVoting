@@ -1,6 +1,6 @@
 {
-  "name": "release-voting-clean-start",
-  "version": "1.0.0",
+  "name": "release-voting-app",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,14 +9,14 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
-    "next": "15.5.7",
+    "next": "15.5.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.0.0"
   }
 }
