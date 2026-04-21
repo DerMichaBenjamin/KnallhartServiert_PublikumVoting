@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 
 export const ADMIN_COOKIE_NAME = "ks_admin_session";
 
+type AdminAuthResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
 function getAdminPassword() {
   return (process.env.ADMIN_PASSWORD ?? "").trim();
 }
@@ -12,10 +16,6 @@ export function hasAdminPasswordConfigured() {
 
 export function isValidAdminPassword(password: string) {
   return hasAdminPasswordConfigured() && password === getAdminPassword();
-}
-
-function getAdminSessionValue() {
-  return getAdminPassword();
 }
 
 function parseCookies(cookieHeader: string | null) {
@@ -31,16 +31,21 @@ function parseCookies(cookieHeader: string | null) {
   return result;
 }
 
-export function ensureAdminRequest(request: Request) {
-  const cookies = parseCookies(request.headers.get("cookie"));
-  const current = cookies[ADMIN_COOKIE_NAME];
-  const expected = getAdminSessionValue();
+export function ensureAdminRequest(request: Request): AdminAuthResult {
+  const expected = getAdminPassword();
 
-  if (!expected || current !== expected) {
-    return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
+  if (!expected) {
+    return { ok: false, error: "ADMIN_PASSWORD fehlt." };
   }
 
-  return null;
+  const cookies = parseCookies(request.headers.get("cookie"));
+  const current = cookies[ADMIN_COOKIE_NAME] ?? "";
+
+  if (current !== expected) {
+    return { ok: false, error: "Nicht autorisiert." };
+  }
+
+  return { ok: true };
 }
 
 export function createAdminLoginResponse(
@@ -50,10 +55,10 @@ export function createAdminLoginResponse(
 
   response.cookies.set({
     name: ADMIN_COOKIE_NAME,
-    value: getAdminSessionValue(),
+    value: getAdminPassword(),
     httpOnly: true,
     sameSite: "lax",
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });
@@ -71,7 +76,7 @@ export function createAdminLogoutResponse(
     value: "",
     httpOnly: true,
     sameSite: "lax",
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 0,
   });
