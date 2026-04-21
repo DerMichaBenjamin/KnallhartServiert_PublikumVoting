@@ -180,31 +180,55 @@ export function shuffleSongs(songs: string[]) {
 }
 
 export function leaderboardFromVotes(songs: string[], votes: VoteRow[]): LeaderboardRow[] {
-  const map = new Map<string, { totalPoints: number; voteCount: number }>();
-  songs.forEach((song) => map.set(song, { totalPoints: 0, voteCount: 0 }));
+  const validVotes = Array.isArray(votes)
+    ? votes.filter((vote) => Array.isArray(vote?.ranking_json))
+    : [];
 
-  for (const vote of votes) {
+  const totalParticipants = validVotes.length;
+
+  const map = new Map<string, { totalPoints: number; voteCount: number }>();
+  songs.forEach((song) => {
+    const normalizedSong = typeof song === 'string' ? song.trim() : '';
+    if (!normalizedSong) return;
+    map.set(normalizedSong, { totalPoints: 0, voteCount: 0 });
+  });
+
+  for (const vote of validVotes) {
     const ranking = Array.isArray(vote.ranking_json) ? vote.ranking_json : [];
+    const seenInThisVote = new Set<string>();
+
     for (const item of ranking) {
       const song = typeof item.song === 'string' ? item.song.trim() : '';
       const points = Number(item.points);
+
       if (!song || !map.has(song) || !Number.isFinite(points)) continue;
+      if (seenInThisVote.has(song)) continue;
+
+      seenInThisVote.add(song);
+
       const current = map.get(song)!;
       current.totalPoints += points;
-      current.voteCount += 1;
+
+      if (points > 0) {
+        current.voteCount += 1;
+      }
     }
   }
 
   return Array.from(map.entries())
     .map(([song, value]) => {
       const parts = splitSong(song);
+
       return {
         song,
         title: parts.title,
         artist: parts.artist,
         totalPoints: value.totalPoints,
         voteCount: value.voteCount,
-        averagePoints: value.voteCount > 0 ? Number((value.totalPoints / value.voteCount).toFixed(2)) : 0,
+        averagePoints:
+          totalParticipants > 0
+            ? Number((value.totalPoints / totalParticipants).toFixed(2))
+            : 0,
       };
     })
     .sort((a, b) => {
