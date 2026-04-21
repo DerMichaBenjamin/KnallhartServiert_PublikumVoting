@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
-import { getPublicRoundState } from '@/lib/releaseVoting';
+import { normalizeDateTimeValue, getBerlinNowLocalValue } from '@/lib/releaseVoting';
+
+function isValidEmailFormat(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
@@ -12,26 +16,25 @@ export async function POST(request: NextRequest) {
 
   if (!roundId) return NextResponse.json({ ok: false, error: 'roundId fehlt.' }, { status: 400 });
   if (!jurorName) return NextResponse.json({ ok: false, error: 'Bitte einen Namen eingeben.' }, { status: 400 });
+  if (jurorEmail && !isValidEmailFormat(jurorEmail)) {
+    return NextResponse.json({ ok: false, error: 'Bitte eine gültige E-Mail-Adresse eingeben.' }, { status: 400 });
+  }
 
   const supabase = getSupabaseAdminClient();
   if (!supabase) return NextResponse.json({ ok: false, error: 'Supabase-Client konnte nicht erstellt werden.' }, { status: 500 });
 
   const roundQuery = await supabase.from('release_voting_rounds').select('*').eq('id', roundId).maybeSingle();
   if (roundQuery.error) return NextResponse.json({ ok: false, error: roundQuery.error.message }, { status: 500 });
-  if (!roundQuery.data) return NextResponse.json({ ok: false, error: 'Umfrage nicht gefunden.' }, { status: 404 });
+  if (!roundQuery.data) return NextResponse.json({ ok: false, error: 'Abstimmung nicht gefunden.' }, { status: 404 });
 
   const round = roundQuery.data;
-  const publicState = getPublicRoundState(round);
+  const now = getBerlinNowLocalValue();
+  const start = normalizeDateTimeValue(round.start_at);
+  const end = normalizeDateTimeValue(round.end_at);
 
-  if (publicState === 'draft') {
-    return NextResponse.json({ ok: false, error: 'Diese Umfrage ist noch nicht freigegeben.' }, { status: 400 });
-  }
-  if (publicState === 'upcoming') {
-    return NextResponse.json({ ok: false, error: 'Diese Umfrage hat noch nicht begonnen.' }, { status: 400 });
-  }
-  if (publicState === 'ended') {
-    return NextResponse.json({ ok: false, error: 'Diese Umfrage ist bereits beendet.' }, { status: 400 });
-  }
+  if (round.status !== 'live') return NextResponse.json({ ok: false, error: 'Diese Abstimmung ist nicht live.' }, { status: 400 });
+  if (start && now < start) return NextResponse.json({ ok: false, error: 'Diese Abstimmung hat noch nicht begonnen.' }, { status: 400 });
+  if (end && now > end) return NextResponse.json({ ok: false, error: 'Diese Abstimmung ist bereits beendet.' }, { status: 400 });
 
   if (ranking.length !== round.places_count) {
     return NextResponse.json({ ok: false, error: `Bitte genau ${round.places_count} Plätze belegen.` }, { status: 400 });
