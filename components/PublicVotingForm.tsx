@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { splitSong } from '@/lib/releaseVoting';
+import { combineSongLine, splitSong } from '@/lib/releaseVoting';
 
 type PublicVotingFormProps = {
   roundId: string;
@@ -44,10 +44,8 @@ export default function PublicVotingForm({ roundId, roundTitle, placesCount, son
   }, [songs, rankedSongs, query]);
 
   const filledSlots = rankedSongs.length;
-
-  function findSongIndex(song: string) {
-    return ranking.findIndex((entry) => entry === song);
-  }
+  const allDone = filledSlots === placesCount;
+  const nextFreeIndex = ranking.findIndex((entry) => !entry);
 
   function assignSongToSlot(song: string, targetIndex: number) {
     setRanking((prev) => {
@@ -115,12 +113,6 @@ export default function PublicVotingForm({ roundId, roundTitle, placesCount, son
     const raw = event.dataTransfer.getData('application/json') || event.dataTransfer.getData('text/plain');
     const payload = parsePayload(raw);
     if (!payload) return;
-
-    if (payload.kind === 'song') {
-      assignSongToSlot(payload.song, targetIndex);
-      return;
-    }
-
     assignSongToSlot(payload.song, targetIndex);
   }
 
@@ -189,20 +181,20 @@ export default function PublicVotingForm({ roundId, roundTitle, placesCount, son
   }
 
   return (
-    <form className="form-stack" onSubmit={onSubmit}>
-      <div className="notice feature-box">
+    <form className="form-stack public-voting-form" onSubmit={onSubmit}>
+      <div className="notice notice-light feature-box soft-info">
         <div>
-          <strong>Einfachste Bedienung:</strong> Ziehe Songs links in dein Ranking oder nutze den Button „Auf nächsten freien Platz“.
+          <strong>So geht’s am schnellsten:</strong> Songs links in dein Ranking ziehen oder direkt auf den nächsten freien Platz setzen.
         </div>
         <div>
-          Die Punktzahlen sind automatisch eindeutig, weil jeder Platz genau einer festen Punktzahl entspricht.
+          Sobald alle <strong>{placesCount}</strong> Plätze belegt sind, erscheint unten ein deutlich hervorgehobener Absende-Bereich.
         </div>
       </div>
 
-      <div className="grid-3">
+      <div className="grid-3 public-user-grid">
         <div className="field">
           <label htmlFor="jurorName">Name</label>
-          <input id="jurorName" value={jurorName} onChange={(event) => setJurorName(event.target.value)} placeholder="z. B. Micha Benjamin" required />
+          <input id="jurorName" value={jurorName} onChange={(event) => setJurorName(event.target.value)} placeholder="z. B. Micha" required />
         </div>
         <div className="field">
           <label htmlFor="jurorEmail">E-Mail</label>
@@ -214,32 +206,31 @@ export default function PublicVotingForm({ roundId, roundTitle, placesCount, son
         </div>
       </div>
 
-      {message && <div className={message.type === 'success' ? 'notice success' : 'notice error'}>{message.text}</div>}
+      {message && <div className={message.type === 'success' ? 'notice success notice-light' : 'notice error notice-light'}>{message.text}</div>}
 
-      <div className="voting-layout">
-        <section className="table-card voting-panel">
-          <div className="section-head compact-gap">
+      <div className="voting-layout voting-layout-friendly">
+        <section className="table-card voting-panel public-card-soft">
+          <div className="section-head compact-gap public-section-head">
             <div>
-              <h2 className="section-title">Dein Ranking</h2>
-              <p className="section-subtitle">Belege alle Plätze. Oben stehen die meisten Punkte.</p>
+              <h2 className="section-title public-section-title">Dein Ranking</h2>
+              <p className="section-subtitle">Platz 1 bekommt die meisten Punkte. Jeder Platz ist automatisch eindeutig.</p>
             </div>
-            <div className="progress-pill">
+            <div className={`progress-pill ${allDone ? 'ready-pill' : 'neutral'}`}>
               {filledSlots} / {placesCount} Plätze belegt
             </div>
           </div>
 
-          <div className="rank-slots">
+          <div className="rank-slots compact-rank-slots">
             {pointValues.map((points, index) => {
               const song = ranking[index];
-              const parts = song ? splitSong(song) : null;
               return (
                 <div
                   key={points}
-                  className={`rank-slot${song ? ' filled' : ''}`}
+                  className={`rank-slot compact-rank-slot${song ? ' filled' : ''}`}
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={(event) => onDropOnSlot(event, index)}
                 >
-                  <div className="rank-slot-points">{points} Punkte</div>
+                  <div className="rank-slot-points compact-points-badge">{points} Punkte</div>
                   {!song && <div className="rank-slot-empty">Song hier ablegen</div>}
                   {song && (
                     <div
@@ -247,13 +238,12 @@ export default function PublicVotingForm({ roundId, roundTitle, placesCount, son
                       onDragStart={(event) => {
                         event.dataTransfer.setData('application/json', serializePayload({ kind: 'slot', song, index }));
                       }}
-                      className="rank-slot-song"
+                      className="rank-slot-song compact-slot-song"
                     >
-                      <div>
-                        <div className="song-name">{parts?.title}</div>
-                        <div className="song-artist">{parts?.artist}</div>
+                      <div className="slot-main-line">
+                        <div className="song-line compact-song-line">{combineSongLine(song)}</div>
                       </div>
-                      <div className="slot-actions">
+                      <div className="slot-actions compact-slot-actions">
                         <button type="button" className="button ghost tiny" onClick={() => moveSlot(index, -1)} disabled={index === 0}>
                           ↑
                         </button>
@@ -272,11 +262,11 @@ export default function PublicVotingForm({ roundId, roundTitle, placesCount, son
           </div>
         </section>
 
-        <section className="table-card voting-panel">
-          <div className="section-head compact-gap">
+        <section className="table-card voting-panel public-card-soft">
+          <div className="section-head compact-gap public-section-head">
             <div>
-              <h2 className="section-title">Verfügbare Songs</h2>
-              <p className="section-subtitle">Suche, ziehe oder füge Songs direkt dem nächsten freien Platz hinzu.</p>
+              <h2 className="section-title public-section-title">Verfügbare Songs</h2>
+              <p className="section-subtitle">Kompakt gelistet, damit du weniger scrollen musst.</p>
             </div>
             <div className="progress-pill neutral">{availableSongs.length} verfügbar</div>
           </div>
@@ -286,23 +276,21 @@ export default function PublicVotingForm({ roundId, roundTitle, placesCount, son
             <input id="query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Titel oder Interpret filtern" />
           </div>
 
-          <div className="available-list">
-            {availableSongs.length === 0 && <div className="empty-state">Keine weiteren Songs verfügbar.</div>}
+          <div className="available-list compact-available-list">
+            {availableSongs.length === 0 && <div className="empty-state public-empty-state">Keine weiteren Songs verfügbar.</div>}
             {availableSongs.map((song) => {
               const parts = splitSong(song);
-              const nextFreeIndex = ranking.findIndex((entry) => !entry);
               return (
                 <div
                   key={song}
-                  className="available-card"
+                  className="available-card compact-available-card"
                   draggable
                   onDragStart={(event) => {
                     event.dataTransfer.setData('application/json', serializePayload({ kind: 'song', song }));
                   }}
                 >
-                  <div>
-                    <div className="song-name">{parts.title}</div>
-                    <div className="song-artist">{parts.artist}</div>
+                  <div className="available-main-line">
+                    <div className="song-line compact-song-line">{parts.title} — {parts.artist}</div>
                   </div>
                   <button
                     type="button"
@@ -319,9 +307,19 @@ export default function PublicVotingForm({ roundId, roundTitle, placesCount, son
         </section>
       </div>
 
-      <button className="button primary full" type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Speichert...' : 'Voting absenden'}
-      </button>
+      <div className={`submit-dock ${allDone ? 'ready' : ''}`}>
+        <div className="submit-dock-text">
+          <strong>{allDone ? 'Fertig zum Absenden.' : 'Noch nicht vollständig.'}</strong>
+          <span>
+            {allDone
+              ? 'Alle 12 Plätze sind belegt. Du kannst dein Voting jetzt direkt abschicken.'
+              : `Es fehlen noch ${placesCount - filledSlots} Platzierungen.`}
+          </span>
+        </div>
+        <button type="submit" className="button primary submit-dock-button" disabled={isSubmitting || !allDone}>
+          {isSubmitting ? 'Wird gespeichert ...' : 'Voting absenden'}
+        </button>
+      </div>
     </form>
   );
 }
