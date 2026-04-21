@@ -16,20 +16,41 @@ type DragPayload =
   | { kind: 'song'; song: string }
   | { kind: 'slot'; song: string; index: number };
 
-export default function PublicVotingForm({ roundId, roundTitle, placesCount, songs }: PublicVotingFormProps) {
+export default function PublicVotingForm({
+  roundId,
+  roundTitle,
+  placesCount,
+  songs,
+}: PublicVotingFormProps) {
   const [jurorName, setJurorName] = useState('');
   const [jurorEmail, setJurorEmail] = useState('');
   const [jurorInstagram, setJurorInstagram] = useState('');
   const [query, setQuery] = useState('');
-  const [ranking, setRanking] = useState<(string | null)[]>(() => Array.from({ length: placesCount }, () => null));
+  const [ranking, setRanking] = useState<(string | null)[]>(
+    () => Array.from({ length: placesCount }, () => null)
+  );
+  const [activeSlot, setActiveSlot] = useState<number | null>(0);
   const [message, setMessage] = useState<MessageState>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const pointValues = useMemo(() => Array.from({ length: placesCount }, (_, index) => placesCount - index), [placesCount]);
-  const rankedSongs = useMemo(() => ranking.filter(Boolean) as string[], [ranking]);
+  const pointValues = useMemo(
+    () => Array.from({ length: placesCount }, (_, index) => placesCount - index),
+    [placesCount]
+  );
+
+  const rankedSongs = useMemo(
+    () => ranking.filter(Boolean) as string[],
+    [ranking]
+  );
+
+  const firstFreeIndex = useMemo(
+    () => ranking.findIndex((entry) => !entry),
+    [ranking]
+  );
 
   const availableSongs = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
+
     return songs.filter((song) => {
       if (rankedSongs.includes(song)) return false;
       if (!normalizedQuery) return true;
@@ -40,20 +61,39 @@ export default function PublicVotingForm({ roundId, roundTitle, placesCount, son
   const filledSlots = rankedSongs.length;
   const isComplete = filledSlots === placesCount;
 
-  function assignSongToSlot(song: string, targetIndex: number) {
+  const effectiveTargetIndex =
+    activeSlot !== null ? activeSlot : firstFreeIndex >= 0 ? firstFreeIndex : null;
+
+  function setSongAtIndex(song: string, targetIndex: number) {
     setRanking((prev) => {
       const next = [...prev];
       const sourceIndex = next.findIndex((entry) => entry === song);
       const targetSong = next[targetIndex];
-      if (sourceIndex === targetIndex) return next;
+
+      if (sourceIndex === targetIndex) {
+        return next;
+      }
+
       if (sourceIndex >= 0) {
         next[sourceIndex] = targetSong ?? null;
         next[targetIndex] = song;
         return next;
       }
+
       next[targetIndex] = song;
       return next;
     });
+
+    setActiveSlot(targetIndex);
+  }
+
+  function addSongByClick(song: string) {
+    const targetIndex =
+      activeSlot !== null ? activeSlot : firstFreeIndex >= 0 ? firstFreeIndex : null;
+
+    if (targetIndex === null) return;
+
+    setSongAtIndex(song, targetIndex);
   }
 
   function removeFromSlot(index: number) {
@@ -62,17 +102,14 @@ export default function PublicVotingForm({ roundId, roundTitle, placesCount, son
       next[index] = null;
       return next;
     });
-  }
 
-  function addToNextFree(song: string) {
-    const freeIndex = ranking.findIndex((entry) => !entry);
-    if (freeIndex < 0) return;
-    assignSongToSlot(song, freeIndex);
+    setActiveSlot(index);
   }
 
   function moveSlot(index: number, direction: -1 | 1) {
     const targetIndex = index + direction;
     if (targetIndex < 0 || targetIndex >= ranking.length) return;
+
     setRanking((prev) => {
       const next = [...prev];
       const temp = next[index];
@@ -80,6 +117,8 @@ export default function PublicVotingForm({ roundId, roundTitle, placesCount, son
       next[targetIndex] = temp;
       return next;
     });
+
+    setActiveSlot(targetIndex);
   }
 
   function serializePayload(payload: DragPayload) {
@@ -89,20 +128,34 @@ export default function PublicVotingForm({ roundId, roundTitle, placesCount, son
   function parsePayload(raw: string): DragPayload | null {
     try {
       const parsed = JSON.parse(raw) as DragPayload;
+
       if (parsed.kind === 'song' && typeof parsed.song === 'string') return parsed;
-      if (parsed.kind === 'slot' && typeof parsed.song === 'string' && typeof parsed.index === 'number') return parsed;
+      if (
+        parsed.kind === 'slot' &&
+        typeof parsed.song === 'string' &&
+        typeof parsed.index === 'number'
+      ) {
+        return parsed;
+      }
+
       return null;
     } catch {
       return null;
     }
   }
 
-  function onDropOnSlot(event: React.DragEvent<HTMLDivElement>, targetIndex: number) {
+  function onDropOnSlot(
+    event: React.DragEvent<HTMLDivElement>,
+    targetIndex: number
+  ) {
     event.preventDefault();
-    const raw = event.dataTransfer.getData('application/json') || event.dataTransfer.getData('text/plain');
+    const raw =
+      event.dataTransfer.getData('application/json') ||
+      event.dataTransfer.getData('text/plain');
     const payload = parsePayload(raw);
     if (!payload) return;
-    assignSongToSlot(payload.song, targetIndex);
+
+    setSongAtIndex(payload.song, targetIndex);
   }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -114,13 +167,19 @@ export default function PublicVotingForm({ roundId, roundTitle, placesCount, son
       .filter(Boolean) as { song: string; points: number }[];
 
     if (rankingPayload.length !== placesCount) {
-      setMessage({ type: 'error', text: `Bitte belege alle ${placesCount} Plätze.` });
+      setMessage({
+        type: 'error',
+        text: `Bitte belege alle ${placesCount} Plätze.`,
+      });
       return;
     }
 
     const uniqueSongs = new Set(rankingPayload.map((entry) => entry.song));
     if (uniqueSongs.size !== rankingPayload.length) {
-      setMessage({ type: 'error', text: 'Jeder Song darf nur einmal im Ranking vorkommen.' });
+      setMessage({
+        type: 'error',
+        text: 'Jeder Song darf nur einmal im Ranking vorkommen.',
+      });
       return;
     }
 
@@ -139,135 +198,282 @@ export default function PublicVotingForm({ roundId, roundTitle, placesCount, son
         }),
       });
 
-      const result = await response.json().catch(() => ({ ok: false, error: 'Ungültige Server-Antwort.' }));
+      const result = await response
+        .json()
+        .catch(() => ({ ok: false, error: 'Ungültige Server-Antwort.' }));
+
       if (!response.ok || !result.ok) {
         throw new Error(result.error || 'Abstimmung konnte nicht gespeichert werden.');
       }
 
-      setMessage({ type: 'success', text: `Dein Voting für „${roundTitle}“ wurde gespeichert.` });
+      setMessage({
+        type: 'success',
+        text: `Dein Voting für „${roundTitle}“ wurde gespeichert.`,
+      });
       setJurorName('');
       setJurorEmail('');
       setJurorInstagram('');
       setQuery('');
       setRanking(Array.from({ length: placesCount }, () => null));
+      setActiveSlot(0);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Abstimmung konnte nicht gespeichert werden.' });
+      setMessage({
+        type: 'error',
+        text:
+          error instanceof Error
+            ? error.message
+            : 'Abstimmung konnte nicht gespeichert werden.',
+      });
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <form className="form-stack" onSubmit={onSubmit}>
+    <form className="form-stack public-form-improved" onSubmit={onSubmit}>
       <div className="notice notice-light compact-instructions">
-        <strong>So geht’s:</strong> 12 Songs auswählen, Reihenfolge festlegen, absenden.
+        <strong>So geht’s:</strong> Platz anklicken, Song per Klick oder Drag & Drop
+        einfügen, Reihenfolge anpassen, absenden.
       </div>
 
       <div className="grid-3 compact-user-grid">
         <div className="field">
           <label htmlFor="jurorName">Name</label>
-          <input id="jurorName" value={jurorName} onChange={(event) => setJurorName(event.target.value)} placeholder="Dein Name" required />
+          <input
+            id="jurorName"
+            value={jurorName}
+            onChange={(event) => setJurorName(event.target.value)}
+            placeholder="Dein Name"
+            required
+          />
         </div>
+
         <div className="field">
           <label htmlFor="jurorEmail">E-Mail</label>
-          <input id="jurorEmail" type="email" value={jurorEmail} onChange={(event) => setJurorEmail(event.target.value)} placeholder="optional" />
+          <input
+            id="jurorEmail"
+            type="email"
+            value={jurorEmail}
+            onChange={(event) => setJurorEmail(event.target.value)}
+            placeholder="optional"
+          />
         </div>
+
         <div className="field">
           <label htmlFor="jurorInstagram">Instagram</label>
-          <input id="jurorInstagram" value={jurorInstagram} onChange={(event) => setJurorInstagram(event.target.value)} placeholder="optional" />
+          <input
+            id="jurorInstagram"
+            value={jurorInstagram}
+            onChange={(event) => setJurorInstagram(event.target.value)}
+            placeholder="optional"
+          />
         </div>
       </div>
 
-      {message && <div className={message.type === 'success' ? 'notice success notice-light' : 'notice error notice-light'}>{message.text}</div>}
+      {message && (
+        <div
+          className={
+            message.type === 'success'
+              ? 'notice success notice-light'
+              : 'notice error notice-light'
+          }
+        >
+          {message.text}
+        </div>
+      )}
 
-      <div className="voting-layout compact-voting-layout">
-        <section className="table-card voting-panel public-card-soft">
-          <div className="section-head compact-gap">
-            <div>
-              <h2 className="section-title compact-title">Deine 12 Plätze</h2>
-              <p className="section-subtitle">Oben = mehr Punkte.</p>
-            </div>
-            <div className="progress-pill">{filledSlots}/{placesCount}</div>
-          </div>
-
-          <div className="rank-slots compact-rank-slots">
-            {pointValues.map((points, index) => {
-              const song = ranking[index];
-              return (
-                <div
-                  key={points}
-                  className={`rank-slot compact-rank-slot${song ? ' filled' : ''}`}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={(event) => onDropOnSlot(event, index)}
-                >
-                  <div className="rank-slot-points">{points} P</div>
-                  {!song && <div className="rank-slot-empty">Song hier ablegen</div>}
-                  {song && (
-                    <div
-                      draggable
-                      onDragStart={(event) => {
-                        event.dataTransfer.setData('application/json', serializePayload({ kind: 'slot', song, index }));
-                      }}
-                      className="rank-slot-song compact-rank-song"
-                    >
-                      <div className="song-line">{combineSongLine(song)}</div>
-                      <div className="slot-actions">
-                        <button type="button" className="button ghost tiny" onClick={() => moveSlot(index, -1)} disabled={index === 0}>↑</button>
-                        <button type="button" className="button ghost tiny" onClick={() => moveSlot(index, 1)} disabled={index === ranking.length - 1}>↓</button>
-                        <button type="button" className="button ghost tiny" onClick={() => removeFromSlot(index)}>×</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
+      <div className="voting-layout voting-layout-improved">
         <section className="table-card voting-panel public-card-soft">
           <div className="section-head compact-gap">
             <div>
               <h2 className="section-title compact-title">Songs zur Auswahl</h2>
-              <p className="section-subtitle">Die Reihenfolge mischt sich bei jedem Laden neu.</p>
+              <p className="section-subtitle">
+                Klick auf <strong>+</strong> setzt den Song in den markierten Platz.
+              </p>
             </div>
             <div className="progress-pill neutral">{availableSongs.length}</div>
           </div>
 
           <div className="field compact-search-field">
             <label htmlFor="query">Suche</label>
-            <input id="query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Titel oder Interpret" />
+            <input
+              id="query"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Titel oder Interpret"
+            />
           </div>
 
-          <div className="available-list compact-available-list">
-            {availableSongs.length === 0 && <div className="empty-state public-empty-state">Keine Songs mehr frei.</div>}
-            {availableSongs.map((song) => {
-              const nextFreeIndex = ranking.findIndex((entry) => !entry);
-              return (
+          <div className="target-hint">
+            {effectiveTargetIndex !== null ? (
+              <>
+                Aktiver Zielplatz:{' '}
+                <strong>
+                  #{effectiveTargetIndex + 1} · {pointValues[effectiveTargetIndex]} Punkte
+                </strong>
+              </>
+            ) : (
+              <>Alle Plätze sind belegt.</>
+            )}
+          </div>
+
+          <div className="panel-scroll available-panel-scroll">
+            <div className="available-list compact-available-list">
+              {availableSongs.length === 0 && (
+                <div className="empty-state public-empty-state">
+                  Keine Songs mehr frei.
+                </div>
+              )}
+
+              {availableSongs.map((song) => (
                 <div
                   key={song}
-                  className="available-card compact-available-card"
+                  className="available-card compact-available-card improved-available-card"
                   draggable
                   onDragStart={(event) => {
-                    event.dataTransfer.setData('application/json', serializePayload({ kind: 'song', song }));
+                    event.dataTransfer.setData(
+                      'application/json',
+                      serializePayload({ kind: 'song', song })
+                    );
                   }}
                 >
-                  <div className="song-line">{combineSongLine(song)}</div>
-                  <button type="button" className="button secondary small compact-add-button" onClick={() => addToNextFree(song)} disabled={nextFreeIndex < 0}>
-                    +
+                  <button
+                    type="button"
+                    className="available-card-main"
+                    onClick={() => addSongByClick(song)}
+                    disabled={effectiveTargetIndex === null}
+                    title="In den aktiven Platz einfügen"
+                  >
+                    <span className="song-line">{combineSongLine(song)}</span>
                   </button>
+
+                  <div className="available-actions">
+                    <button
+                      type="button"
+                      className="button secondary small compact-add-button"
+                      onClick={() => addSongByClick(song)}
+                      disabled={effectiveTargetIndex === null}
+                      title="In den aktiven Platz einfügen"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="table-card voting-panel public-card-soft">
+          <div className="section-head compact-gap">
+            <div>
+              <h2 className="section-title compact-title">Deine 12 Plätze</h2>
+              <p className="section-subtitle">
+                Platz anklicken = aktives Ziel. Oben = mehr Punkte.
+              </p>
+            </div>
+            <div className="progress-pill">{filledSlots}/{placesCount}</div>
+          </div>
+
+          <div className="panel-scroll ranking-panel-scroll">
+            <div className="rank-slots compact-rank-slots improved-rank-slots">
+              {pointValues.map((points, index) => {
+                const song = ranking[index];
+                const isActive = activeSlot === index;
+
+                return (
+                  <div
+                    key={points}
+                    className={`rank-slot compact-rank-slot improved-rank-slot${
+                      song ? ' filled' : ''
+                    }${isActive ? ' targeted' : ''}`}
+                    onClick={() => setActiveSlot(index)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => onDropOnSlot(event, index)}
+                  >
+                    <div className="rank-slot-topline">
+                      <div className="rank-slot-points">{points} P</div>
+                      <div className="rank-slot-position">Platz {index + 1}</div>
+                    </div>
+
+                    {!song && (
+                      <div className="rank-slot-empty">
+                        {isActive ? 'Hier wird per Klick eingefügt' : 'Platz auswählen oder Song ablegen'}
+                      </div>
+                    )}
+
+                    {song && (
+                      <div
+                        draggable
+                        onDragStart={(event) => {
+                          event.dataTransfer.setData(
+                            'application/json',
+                            serializePayload({ kind: 'slot', song, index })
+                          );
+                        }}
+                        className="rank-slot-song compact-rank-song"
+                      >
+                        <div className="song-line">{combineSongLine(song)}</div>
+
+                        <div className="slot-actions">
+                          <button
+                            type="button"
+                            className="button ghost tiny"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              moveSlot(index, -1);
+                            }}
+                            disabled={index === 0}
+                          >
+                            ↑
+                          </button>
+
+                          <button
+                            type="button"
+                            className="button ghost tiny"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              moveSlot(index, 1);
+                            }}
+                            disabled={index === ranking.length - 1}
+                          >
+                            ↓
+                          </button>
+
+                          <button
+                            type="button"
+                            className="button ghost tiny"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              removeFromSlot(index);
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
       </div>
 
       <div className={`submit-bar${isComplete ? ' visible' : ''}`}>
         <div className="submit-bar-copy">
-          {isComplete ? 'Alle 12 Plätze sind belegt.' : `Noch ${placesCount - filledSlots} Platz/Plätze offen.`}
+          {isComplete
+            ? 'Alle 12 Plätze sind belegt.'
+            : `Noch ${placesCount - filledSlots} Platz/Plätze offen.`}
         </div>
-        <button className="button primary submit-bar-button" type="submit" disabled={isSubmitting || !isComplete}>
+
+        <button
+          className="button primary submit-bar-button"
+          type="submit"
+          disabled={isSubmitting || !isComplete}
+        >
           {isSubmitting ? 'Speichert…' : 'Voting absenden'}
         </button>
       </div>
