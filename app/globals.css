@@ -1369,3 +1369,68 @@ td {
     max-height: 64vh;
   }
 }
+.touch-mode .available-card-main-clickable,
+.touch-mode .compact-add-button,
+.touch-mode .button.tiny {
+  min-height: 42px;
+}
+
+.touch-mode .compact-add-button {
+  min-width: 42px;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.touch-mode .slot-actions {
+  gap: 6px;
+}
+
+.touch-mode .rank-slot,
+.touch-mode .available-card {
+  padding: 12px;
+}
+
+.touch-mode .rank-slot-song .song-line,
+.touch-mode .available-card .song-line {
+  line-height: 1.35;
+}
+
+.touch-mode .rank-slot-empty {
+  line-height: 1.35;
+}
+
+@media (max-width: 640px) {
+  .touch-mode .compact-user-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .touch-mode .voting-layout-mobile-2col {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .touch-mode .section-subtitle,
+  .touch-mode .target-hint,
+  .touch-mode .rank-slot-empty,
+  .touch-mode .song-line {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 520px) {
+  .touch-mode .voting-layout-mobile-2col {
+    grid-template-columns: 1fr;
+  }
+
+  .touch-mode .ranking-panel-first {
+    order: 1;
+  }
+
+  .touch-mode .available-panel-second {
+    order: 2;
+  }
+
+  .touch-mode .mobile-tight-scroll {
+    max-height: none;
+  }
+}
