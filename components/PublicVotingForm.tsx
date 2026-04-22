@@ -194,7 +194,7 @@ export default function PublicVotingForm({
 
       setMessage({
         type: 'success',
-        text: `Dein Voting für „${roundTitle}“ wurde gespeichert.`,
+        text: 'Fast geschafft: Bitte bestätige dein Voting jetzt über den Link in deiner E-Mail.',
       });
       setJurorName('');
       setJurorEmail('');
@@ -220,7 +220,7 @@ export default function PublicVotingForm({
       <div className="notice notice-light compact-instructions">
         <strong>So geht’s:</strong> Song antippen oder <strong>+</strong> drücken =
         nächster freier Platz. Danach kannst du dein Ranking per Drag & Drop oder mit
-        <strong> ↑ / ↓ </strong> anpassen.
+        <strong> ↑ / ↓ </strong> anpassen. Deine Stimme zählt erst nach Klick auf den Link in deiner E-Mail.
       </div>
 
       <div className="grid-3 compact-user-grid">
@@ -236,13 +236,14 @@ export default function PublicVotingForm({
         </div>
 
         <div className="field">
-          <label htmlFor="jurorEmail">E-Mail</label>
+          <label htmlFor="jurorEmail">E-Mail für Bestätigung</label>
           <input
             id="jurorEmail"
             type="email"
             value={jurorEmail}
             onChange={(event) => setJurorEmail(event.target.value)}
-            placeholder="optional"
+            placeholder="deine@email.de"
+            required
           />
         </div>
 
@@ -274,13 +275,9 @@ export default function PublicVotingForm({
           <div className="section-head compact-gap">
             <div>
               <h2 className="section-title compact-title">Deine Top 12</h2>
-              <p className="section-subtitle">
-                Oben gibt es die meisten Punkte.
-              </p>
+              <p className="section-subtitle">Oben gibt es die meisten Punkte.</p>
             </div>
-            <div className="progress-pill">
-              {filledSlots}/{placesCount}
-            </div>
+            <div className="progress-pill">{filledSlots}/{placesCount}</div>
           </div>
 
           <div className="panel-scroll ranking-panel-scroll mobile-tight-scroll">
@@ -359,9 +356,7 @@ export default function PublicVotingForm({
           <div className="section-head compact-gap">
             <div>
               <h2 className="section-title compact-title">Songs</h2>
-              <p className="section-subtitle">
-                Tippen, <strong>+</strong> oder Drag & Drop.
-              </p>
+              <p className="section-subtitle">Tippen, <strong>+</strong> oder Drag & Drop.</p>
             </div>
             <div className="progress-pill neutral">{availableSongs.length}</div>
           </div>
