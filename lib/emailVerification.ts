@@ -74,9 +74,10 @@ export async function sendVerificationEmail(input: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: getFromEmail(),
-      to: [input.to],
-      subject: 'Bitte bestätige dein Voting',
+from: `Knallhart serviert Publikums-Voting <${getFromEmail()}>`,
+reply_to: 'noreply@michabenjamin.de',
+to: [input.to],
+subject: 'Bitte bestätige dein Voting',
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
           <h2 style="margin: 0 0 12px;">Knallhart serviert Publikums-Voting</h2>
