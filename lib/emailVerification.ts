@@ -73,25 +73,25 @@ export async function sendVerificationEmail(input: {
       Authorization: `Bearer ${getResendApiKey()}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-from: `Knallhart serviert Publikums-Voting <${getFromEmail()}>`,
-to: [input.to],
-subject: 'Bitte bestätige dein Voting',
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
-          <h2 style="margin: 0 0 12px;">Knallhart serviert Publikums-Voting</h2>
-          <p>Danke für dein Voting für <strong>${escapeHtml(input.roundTitle)}</strong>.</p>
-          <p>Bitte bestätige deine Stimme mit einem Klick auf diesen Button:</p>
-          <p style="margin: 24px 0;">
-            <a href="${input.verificationUrl}" style="display: inline-block; padding: 12px 18px; border-radius: 10px; background: #ff6b3d; color: #ffffff; text-decoration: none; font-weight: 700;">Voting bestätigen</a>
-          </p>
-          <p>Falls der Button nicht funktioniert, kopiere diesen Link in deinen Browser:</p>
-          <p><a href="${input.verificationUrl}">${input.verificationUrl}</a></p>
-          <p style="font-size: 13px; color: #64748b;">Nur bestätigte Stimmen fließen in die Auswertung ein.</p>
-        </div>
-      `,
-      text: `Danke für dein Voting für "${input.roundTitle}". Bitte bestätige deine Stimme über diesen Link: ${input.verificationUrl}`,
-    }),
+body: JSON.stringify({
+  from: `Knallhart serviert Publikums-Voting <${getFromEmail()}>`,
+  to: [input.to],
+  subject: 'Bitte bestätige dein Voting',
+  html: `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
+      <h2 style="margin: 0 0 12px;">Knallhart serviert Publikums-Voting</h2>
+      <p>Danke für dein Voting für <strong>${escapeHtml(input.roundTitle)}</strong>.</p>
+      <p>Bitte bestätige deine Stimme mit einem Klick auf diesen Button:</p>
+      <p style="margin: 24px 0;">
+        <a href="${input.verificationUrl}" style="display: inline-block; padding: 12px 18px; border-radius: 10px; background: #ff6b3d; color: #ffffff; text-decoration: none; font-weight: 700;">Voting bestätigen</a>
+      </p>
+      <p>Falls der Button nicht funktioniert, kopiere diesen Link in deinen Browser:</p>
+      <p><a href="${input.verificationUrl}">${input.verificationUrl}</a></p>
+      <p style="font-size: 13px; color: #64748b;">Nur bestätigte Stimmen fließen in die Auswertung ein.</p>
+    </div>
+  `,
+  text: `Danke für dein Voting für "${input.roundTitle}". Bitte bestätige deine Stimme über diesen Link: ${input.verificationUrl}`,
+}),
   });
 
   if (!response.ok) {
