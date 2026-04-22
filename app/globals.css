@@ -1434,3 +1434,57 @@ td {
     max-height: none;
   }
 }
+.vote-verify-card {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 22px;
+}
+
+.vote-verify-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+}
+
+.vote-verify-header-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.vote-verify-title {
+  margin: 0;
+  font-size: clamp(30px, 4vw, 56px);
+  line-height: 0.98;
+}
+
+.vote-verify-copy {
+  margin: 0;
+  max-width: 620px;
+}
+
+.vote-verify-actions {
+  margin-top: 18px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .vote-verify-card {
+    padding: 16px;
+  }
+
+  .vote-verify-header {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .vote-verify-title {
+    font-size: 34px;
+  }
+
+  .vote-verify-actions .button {
+    width: 100%;
+  }
+}
