@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { combineSongLine } from '@/lib/releaseVoting';
 
 type PublicVotingFormProps = {
@@ -31,7 +31,6 @@ export default function PublicVotingForm({
   );
   const [message, setMessage] = useState<MessageState>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const confirmationRef = useRef<HTMLDivElement | null>(null);
 
   const pointValues = useMemo(
     () => Array.from({ length: placesCount }, (_, index) => placesCount - index),
@@ -195,22 +194,14 @@ export default function PublicVotingForm({
 
       setMessage({
         type: 'success',
-        text:
-          'Fast fertig: Bitte bestätige deine Stimme jetzt per Klick auf den Link in deiner E-Mail. Erst danach zählt dein Voting.',
+        text: 'Fast geschafft: Bitte bestätige dein Voting jetzt über den Link in deiner E-Mail.',
       });
-
       setJurorName('');
       setJurorEmail('');
       setJurorInstagram('');
       setQuery('');
       setRanking(Array.from({ length: placesCount }, () => null));
-
-      setTimeout(() => {
-        confirmationRef.current?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
-      }, 80);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       setMessage({
         type: 'error',
@@ -225,25 +216,26 @@ export default function PublicVotingForm({
   }
 
   return (
-    <form className="form-stack public-form-compact" onSubmit={onSubmit}>
-      <div className="notice notice-light compact-instructions compact-instructions-tight">
-        <strong>So geht’s:</strong> Song antippen oder <strong>+</strong> drücken =
-        nächster freier Platz. Danach bei Bedarf per Drag & Drop oder mit
-        <strong> ↑ / ↓ </strong> nachjustieren.
+    <form className="form-stack public-form-improved" onSubmit={onSubmit}>
+      <div className="notice notice-light compact-instructions">
+        <strong>So funktioniert’s:</strong> Song antippen, <strong>+</strong> drücken
+        oder ziehen = nächster freier Platz. Danach kannst du deine Top 12 bei Bedarf
+        noch per Drag & Drop oder mit <strong>↑ / ↓</strong> anpassen.
       </div>
 
-      {message?.type === 'success' && (
-        <div ref={confirmationRef} className="vote-confirm-banner">
-          <div className="vote-confirm-banner-title">Stimme fast bestätigt</div>
-          <div className="vote-confirm-banner-text">{message.text}</div>
+      {message && (
+        <div
+          className={
+            message.type === 'success'
+              ? 'notice success notice-light'
+              : 'notice error notice-light'
+          }
+        >
+          {message.text}
         </div>
       )}
 
-      {message?.type === 'error' && (
-        <div className="notice error notice-light">{message.text}</div>
-      )}
-
-      <div className="vote-user-grid">
+      <div className="grid-3 compact-user-grid">
         <div className="field">
           <label htmlFor="jurorName">Name</label>
           <input
@@ -278,14 +270,12 @@ export default function PublicVotingForm({
         </div>
       </div>
 
-      <div className="voting-layout voting-layout-mobile-2col improved-mobile-voting">
-        <section className="table-card voting-panel public-card-soft ranking-panel-first compact-panel">
-          <div className="section-head compact-gap compact-section-head">
+      <div className="voting-layout voting-layout-mobile-2col">
+        <section className="table-card voting-panel public-card-soft ranking-panel-first">
+          <div className="section-head compact-gap">
             <div>
               <h2 className="section-title compact-title">Deine Top 12</h2>
-              <p className="section-subtitle compact-subtitle">
-                Oben gibt es die meisten Punkte.
-              </p>
+              <p className="section-subtitle">Oben gibt es die meisten Punkte.</p>
             </div>
             <div className="progress-pill">{filledSlots}/{placesCount}</div>
           </div>
@@ -362,18 +352,16 @@ export default function PublicVotingForm({
           </div>
         </section>
 
-        <section className="table-card voting-panel public-card-soft available-panel-second compact-panel">
-          <div className="section-head compact-gap compact-section-head">
+        <section className="table-card voting-panel public-card-soft available-panel-second">
+          <div className="section-head compact-gap">
             <div>
               <h2 className="section-title compact-title">Songs</h2>
-              <p className="section-subtitle compact-subtitle">
-                Tippen, <strong>+</strong> oder Drag & Drop.
-              </p>
+              <p className="section-subtitle">Tippen, + oder Drag & Drop.</p>
             </div>
             <div className="progress-pill neutral">{availableSongs.length}</div>
           </div>
 
-          <div className="field compact-search-field compact-search-field-tight">
+          <div className="field compact-search-field">
             <label htmlFor="query">Suche</label>
             <input
               id="query"
@@ -383,7 +371,7 @@ export default function PublicVotingForm({
             />
           </div>
 
-          <div className="target-hint compact-target-hint">
+          <div className="target-hint">
             {firstFreeIndex >= 0 ? (
               <>
                 Nächster freier Platz: <strong>#{firstFreeIndex + 1}</strong>
