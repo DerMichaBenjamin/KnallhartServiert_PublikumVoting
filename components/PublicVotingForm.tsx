@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { combineSongLine } from '@/lib/releaseVoting';
 
 type PublicVotingFormProps = {
@@ -31,6 +31,29 @@ export default function PublicVotingForm({
   );
   const [message, setMessage] = useState<MessageState>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTouchMode, setIsTouchMode] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery =
+      typeof window !== 'undefined'
+        ? window.matchMedia('(pointer: coarse)')
+        : null;
+
+    const updateMode = () => {
+      const touchCapable =
+        typeof window !== 'undefined' &&
+        ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
+      setIsTouchMode(Boolean(mediaQuery?.matches || touchCapable));
+    };
+
+    updateMode();
+    mediaQuery?.addEventListener?.('change', updateMode);
+
+    return () => {
+      mediaQuery?.removeEventListener?.('change', updateMode);
+    };
+  }, []);
 
   const pointValues = useMemo(
     () => Array.from({ length: placesCount }, (_, index) => placesCount - index),
@@ -134,6 +157,8 @@ export default function PublicVotingForm({
     event: React.DragEvent<HTMLDivElement>,
     targetIndex: number
   ) {
+    if (isTouchMode) return;
+
     event.preventDefault();
     const raw =
       event.dataTransfer.getData('application/json') ||
@@ -194,7 +219,8 @@ export default function PublicVotingForm({
 
       setMessage({
         type: 'success',
-        text: 'Fast geschafft: Bitte bestätige dein Voting jetzt über den Link in deiner E-Mail.',
+        text:
+          'Fast geschafft: Bitte bestätige dein Voting jetzt über den Link in deiner E-Mail.',
       });
       setJurorName('');
       setJurorEmail('');
@@ -215,12 +241,19 @@ export default function PublicVotingForm({
     }
   }
 
+  const instructionText = isTouchMode
+    ? 'So funktioniert’s: Song antippen oder + drücken = nächster freier Platz. Mit ↑ / ↓ verschiebst du Songs nach oben oder unten.'
+    : 'So funktioniert’s: Song antippen, + drücken oder per Drag & Drop ziehen = nächster freier Platz. Mit ↑ / ↓ kannst du zusätzlich nachjustieren.';
+
   return (
-    <form className="form-stack public-form-improved" onSubmit={onSubmit}>
+    <form
+      className={`form-stack public-form-improved${
+        isTouchMode ? ' touch-mode' : ' desktop-mode'
+      }`}
+      onSubmit={onSubmit}
+    >
       <div className="notice notice-light compact-instructions">
-        <strong>So funktioniert’s:</strong> Song antippen, <strong>+</strong> drücken
-        oder ziehen = nächster freier Platz. Danach kannst du deine Top 12 bei Bedarf
-        noch per Drag & Drop oder mit <strong>↑ / ↓</strong> anpassen.
+        <strong>{instructionText}</strong>
       </div>
 
       {message && (
@@ -288,8 +321,13 @@ export default function PublicVotingForm({
                 return (
                   <div
                     key={points}
-                    className={`rank-slot compact-rank-slot improved-rank-slot${song ? ' filled' : ''}`}
-                    onDragOver={(event) => event.preventDefault()}
+                    className={`rank-slot compact-rank-slot improved-rank-slot${
+                      song ? ' filled' : ''
+                    }`}
+                    onDragOver={(event) => {
+                      if (isTouchMode) return;
+                      event.preventDefault();
+                    }}
                     onDrop={(event) => onDropOnSlot(event, index)}
                   >
                     <div className="rank-slot-topline">
@@ -299,14 +337,17 @@ export default function PublicVotingForm({
 
                     {!song && (
                       <div className="rank-slot-empty">
-                        Song hier ablegen oder rechts antippen.
+                        {isTouchMode
+                          ? 'Song rechts antippen und dann mit ↑ / ↓ sortieren.'
+                          : 'Song hier ablegen oder rechts antippen.'}
                       </div>
                     )}
 
                     {song && (
                       <div
-                        draggable
+                        draggable={!isTouchMode}
                         onDragStart={(event) => {
+                          if (isTouchMode) return;
                           event.dataTransfer.setData(
                             'application/json',
                             serializePayload({ kind: 'slot', song, index })
@@ -356,7 +397,9 @@ export default function PublicVotingForm({
           <div className="section-head compact-gap">
             <div>
               <h2 className="section-title compact-title">Songs</h2>
-              <p className="section-subtitle">Tippen, + oder Drag & Drop.</p>
+              <p className="section-subtitle">
+                {isTouchMode ? 'Antippen oder + drücken.' : 'Tippen, + oder Drag & Drop.'}
+              </p>
             </div>
             <div className="progress-pill neutral">{availableSongs.length}</div>
           </div>
@@ -393,8 +436,9 @@ export default function PublicVotingForm({
                 <div
                   key={song}
                   className="available-card compact-available-card improved-available-card"
-                  draggable
+                  draggable={!isTouchMode}
                   onDragStart={(event) => {
+                    if (isTouchMode) return;
                     event.dataTransfer.setData(
                       'application/json',
                       serializePayload({ kind: 'song', song })
