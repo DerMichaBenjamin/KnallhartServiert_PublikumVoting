@@ -30,6 +30,11 @@ export type VoteRow = {
   ranking_json: VoteItem[];
   created_at: string;
   updated_at: string;
+  is_verified: boolean;
+  verified_at: string | null;
+  verify_token_hash: string | null;
+  verify_expires_at: string | null;
+  verification_sent_at: string | null;
 };
 
 export type LeaderboardRow = {
@@ -179,6 +184,20 @@ export function shuffleSongs(songs: string[]) {
   return next;
 }
 
+export function filterVerifiedVotes(votes: VoteRow[] = []) {
+  return votes.filter((vote) => vote.is_verified === true);
+}
+
+export function getVoteStats(votes: VoteRow[] = []) {
+  const submitted = votes.length;
+  const verified = votes.filter((vote) => vote.is_verified === true).length;
+  return {
+    submitted,
+    verified,
+    pending: submitted - verified,
+  };
+}
+
 export function leaderboardFromVotes(songs: string[], votes: VoteRow[]): LeaderboardRow[] {
   const validVotes = Array.isArray(votes)
     ? votes.filter((vote) => Array.isArray(vote?.ranking_json))
@@ -205,10 +224,8 @@ export function leaderboardFromVotes(songs: string[], votes: VoteRow[]): Leaderb
       if (seenInThisVote.has(song)) continue;
 
       seenInThisVote.add(song);
-
       const current = map.get(song)!;
       current.totalPoints += points;
-
       if (points > 0) {
         current.voteCount += 1;
       }
@@ -218,7 +235,6 @@ export function leaderboardFromVotes(songs: string[], votes: VoteRow[]): Leaderb
   return Array.from(map.entries())
     .map(([song, value]) => {
       const parts = splitSong(song);
-
       return {
         song,
         title: parts.title,
