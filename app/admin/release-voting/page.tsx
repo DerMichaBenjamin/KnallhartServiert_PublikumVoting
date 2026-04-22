@@ -1,6 +1,13 @@
 import AdminDashboard from '@/components/AdminDashboard';
 import { getConfigState } from '@/lib/supabaseAdmin';
-import { getCurrentRound, getVotesForRound, leaderboardFromVotes, listRounds } from '@/lib/releaseVoting';
+import {
+  filterVerifiedVotes,
+  getCurrentRound,
+  getVoteStats,
+  getVotesForRound,
+  leaderboardFromVotes,
+  listRounds,
+} from '@/lib/releaseVoting';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,11 +19,14 @@ export default async function AdminReleaseVotingPage() {
     ? await getVotesForRound(currentRoundResult.data.id)
     : { data: [], error: null as string | null };
 
+  const verifiedVotes = filterVerifiedVotes(currentVotesResult.data);
   const leaderboard = currentRoundResult.data
-    ? leaderboardFromVotes(currentRoundResult.data.songs_json ?? [], currentVotesResult.data)
+    ? leaderboardFromVotes(currentRoundResult.data.songs_json ?? [], verifiedVotes)
     : [];
 
-  const combinedError = [roundsResult.error, currentRoundResult.error, currentVotesResult.error].filter(Boolean).join(' · ');
+  const combinedError = [roundsResult.error, currentRoundResult.error, currentVotesResult.error]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <AdminDashboard
@@ -24,6 +34,7 @@ export default async function AdminReleaseVotingPage() {
       rounds={roundsResult.data}
       currentRound={currentRoundResult.data}
       currentVotes={currentVotesResult.data}
+      voteStats={getVoteStats(currentVotesResult.data)}
       leaderboard={leaderboard}
       loadError={combinedError || null}
     />
