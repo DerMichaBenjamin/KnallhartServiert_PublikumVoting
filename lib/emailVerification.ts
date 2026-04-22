@@ -75,7 +75,6 @@ export async function sendVerificationEmail(input: {
     },
     body: JSON.stringify({
 from: `Knallhart serviert Publikums-Voting <${getFromEmail()}>`,
-reply_to: 'noreply@michabenjamin.de',
 to: [input.to],
 subject: 'Bitte bestätige dein Voting',
       html: `
