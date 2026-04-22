@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import BrandLogo from '@/components/BrandLogo';
 import PublicVotingForm from '@/components/PublicVotingForm';
 import {
-  filterVerifiedVotes,
   formatDateTime,
   getPublicRoundState,
   getRoundBySlug,
@@ -10,98 +9,126 @@ import {
   leaderboardFromVotes,
   publicStatusLabel,
   shuffleSongs,
+  splitSong,
 } from '@/lib/releaseVoting';
 
 export const dynamic = 'force-dynamic';
 
-export default async function VotingBySlugPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ReleaseVotingSlugPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
-  const roundResult = await getRoundBySlug(slug);
-  const round = roundResult.data;
+  const { data: round } = await getRoundBySlug(slug);
 
   if (!round) {
     notFound();
   }
 
-  const votesResult = await getVotesForRound(round.id);
-  const verifiedVotes = filterVerifiedVotes(votesResult.data);
-  const leaderboard = leaderboardFromVotes(round.songs_json ?? [], verifiedVotes);
+  const { data: allVotes } = await getVotesForRound(round.id);
+  const verifiedVotes = (allVotes ?? []).filter((vote: any) => vote?.is_verified === true);
   const publicState = getPublicRoundState(round);
-  const shuffledSongs = shuffleSongs(round.songs_json ?? []);
+  const leaderboard =
+    publicState === 'ended'
+      ? leaderboardFromVotes(round.songs_json, verifiedVotes as any)
+      : [];
 
   return (
-    <main className="public-shell">
-      <div className="public-stack page-width">
-        <section className="hero-card public-hero compact-hero">
-          <BrandLogo compact />
-          <div className="pill">Knallhart serviert Publikums-Voting</div>
-          <h1 className="hero-title">{round.title}</h1>
-          <p className="hero-copy">{round.description || 'Wähle deine Top 12 und bestätige deine Stimme per E-Mail.'}</p>
-        </section>
+    <main className="public-shell public-shell-super-compact">
+      <section className="public-top-strip">
+        <div className="public-top-strip-left">
+          <BrandLogo />
+          <div className="public-top-strip-copy">
+            <h1 className="public-top-title">Knallhart serviert Publikums-Voting</h1>
+            <div className="public-top-sub">{round.title}</div>
+          </div>
+        </div>
 
-        <section className="table-card elevated-card">
-          <div className="meta-grid public-meta-grid">
-            <div className="notice">
-              <div className="small-text">Status</div>
-              <div>{publicStatusLabel(publicState)}</div>
+        <div className="public-top-meta compact-meta-group">
+          <span className={`status-chip ${publicState === 'upcoming' ? 'draft' : publicState}`}>
+            {publicStatusLabel(publicState)}
+          </span>
+          <span className="meta-pill">Start: {formatDateTime(round.start_at)}</span>
+          <span className="meta-pill">Ende: {formatDateTime(round.end_at)}</span>
+        </div>
+      </section>
+
+      {publicState === 'upcoming' && (
+        <div className="notice warn compact-page-notice">
+          Diese Abstimmung ist angelegt, startet aber noch nicht.
+        </div>
+      )}
+
+      {publicState === 'draft' && (
+        <div className="notice warn compact-page-notice">
+          Diese Abstimmung ist noch nicht freigeschaltet.
+        </div>
+      )}
+
+      {publicState === 'live' && (
+        <section className="table-card public-card-soft public-vote-main-card">
+          <PublicVotingForm
+            roundId={round.id}
+            roundTitle={round.title}
+            placesCount={round.places_count}
+            songs={shuffleSongs(round.songs_json)}
+          />
+        </section>
+      )}
+
+      {publicState === 'ended' && (
+        <section className="table-card public-card-soft public-results-card">
+          <div className="section-head compact-gap">
+            <div>
+              <h2 className="section-title compact-title">Endstand User-Voting</h2>
+              <p className="section-subtitle compact-subtitle">
+                Gezählt werden nur per E-Mail bestätigte Stimmen.
+              </p>
             </div>
-            <div className="notice">
-              <div className="small-text">Start</div>
-              <div>{formatDateTime(round.start_at)}</div>
-            </div>
-            <div className="notice">
-              <div className="small-text">Ende</div>
-              <div>{formatDateTime(round.end_at)}</div>
+            <div className="progress-pill neutral">
+              {verifiedVotes.length} bestätigt
             </div>
           </div>
+
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Song</th>
+                  <th>Gesamt</th>
+                  <th>Ø Punkte</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaderboard.length === 0 && (
+                  <tr>
+                    <td colSpan={4}>
+                      <div className="empty-state">Noch keine bestätigten Stimmen vorhanden.</div>
+                    </td>
+                  </tr>
+                )}
+
+                {leaderboard.map((row) => {
+                  const parts = splitSong(row.song);
+                  return (
+                    <tr key={row.song}>
+                      <td>{row.rank}</td>
+                      <td>
+                        <div style={{ fontWeight: 700 }}>{parts.title}</div>
+                        <div className="small-text">{parts.artist}</div>
+                      </td>
+                      <td>{row.totalPoints}</td>
+                      <td>{row.averagePoints.toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </section>
-
-        {publicState === 'upcoming' && (
-          <section className="table-card elevated-card">
-            <div className="empty-state">Die Abstimmung startet bald. Bitte später noch einmal auf dieser Seite nachsehen.</div>
-          </section>
-        )}
-
-        {publicState === 'live' && (
-          <section className="table-card elevated-card">
-            <PublicVotingForm roundId={round.id} roundTitle={round.title} placesCount={round.places_count} songs={shuffledSongs} />
-          </section>
-        )}
-
-        {publicState === 'ended' && (
-          <section className="table-card elevated-card">
-            <div className="section-head compact-gap">
-              <div>
-                <h2 className="section-title">Endstand User-Voting</h2>
-                <p className="section-subtitle">Nur per Mail bestätigte Stimmen wurden gezählt.</p>
-              </div>
-            </div>
-
-            {leaderboard.length === 0 && <div className="empty-state">Noch keine bestätigten Stimmen vorhanden.</div>}
-            {leaderboard.length > 0 && (
-              <div className="results-list">
-                {leaderboard.map((row) => (
-                  <div className="result-row" key={row.song}>
-                    <div className="rank-badge">{row.rank}</div>
-                    <div>
-                      <div className="song-name">{row.title}</div>
-                      <div className="song-artist">{row.artist}</div>
-                    </div>
-                    <div>
-                      <div className="small-text">Gesamt</div>
-                      <div>{row.totalPoints}</div>
-                    </div>
-                    <div>
-                      <div className="small-text">Ø Punkte</div>
-                      <div>{row.averagePoints.toFixed(2)}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-      </div>
+      )}
     </main>
   );
 }
