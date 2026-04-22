@@ -1,10 +1,11 @@
 export default function BrandLogo({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={compact ? 'brand compact' : 'brand'}>
-      <img src="/knallhart-serviert-logo.svg" alt="Knallhart Serviert" className="brand-logo" />
-      <div>
-        <div className="brand-kicker">Knallhart Serviert</div>
-        <div className="brand-title">Release Voting</div>
+    <div className="brand-logo public-brand-logo" aria-label="Knallhart serviert Logo">
+      <div className="brand-logo-mark">
+        <img
+          src="/knallhart-serviert-logo.svg"
+          alt="Knallhart serviert Logo"
+        />
       </div>
     </div>
   );
