@@ -20,6 +20,7 @@ type AdminDashboardProps = {
   rounds: RoundRow[];
   currentRound: RoundRow | null;
   currentVotes: VoteRow[];
+  voteStats: { submitted: number; verified: number; pending: number };
   leaderboard: LeaderboardRow[];
   loadError: string | null;
 };
@@ -53,6 +54,7 @@ export default function AdminDashboard({
   rounds,
   currentRound,
   currentVotes,
+  voteStats,
   leaderboard,
   loadError,
 }: AdminDashboardProps) {
@@ -168,17 +170,14 @@ export default function AdminDashboard({
           <div className="pill">Interner Verwaltungsbereich</div>
           <h1 className="hero-title">Release Voting professionell verwalten</h1>
           <p className="hero-copy">
-            Neue Umfragen anlegen, die aktuelle Runde live setzen, Links kopieren
-            und Ergebnisse im Blick behalten.
+            Neue Umfragen anlegen, Live-Runden steuern und bei der Auswertung nur bestätigte Stimmen zählen.
           </p>
         </div>
 
         <div className="hero-actions">
           <div className="hero-stat-card">
             <div className="small-text">Aktive Umfrage</div>
-            <div className="hero-stat-value">
-              {currentRound?.title ?? 'Keine'}
-            </div>
+            <div className="hero-stat-value">{currentRound?.title ?? 'Keine'}</div>
           </div>
 
           <button type="button" className="button ghost" onClick={onLogout}>
@@ -195,7 +194,7 @@ export default function AdminDashboard({
         </div>
       )}
 
-      <section className="stats-grid">
+      <section className="stats-grid stats-grid-5">
         <article className="info-card">
           <div className="stat-label">Aktuelle Runde</div>
           <div className="stat-value">{currentRound?.title || '—'}</div>
@@ -211,15 +210,21 @@ export default function AdminDashboard({
         </article>
 
         <article className="info-card">
-          <div className="stat-label">Stimmen aktuell</div>
-          <div className="stat-value">{currentVotes.length}</div>
-          <div className="stat-sub">abgegebene Votes der aktuellen Runde</div>
+          <div className="stat-label">Abgegeben</div>
+          <div className="stat-value">{voteStats.submitted}</div>
+          <div className="stat-sub">alle abgeschickten Stimmen</div>
         </article>
 
         <article className="info-card">
-          <div className="stat-label">Songs aktuell</div>
-          <div className="stat-value">{currentRound?.songs_json?.length ?? 0}</div>
-          <div className="stat-sub">pro Runde frei definierbar</div>
+          <div className="stat-label">Bestätigt</div>
+          <div className="stat-value">{voteStats.verified}</div>
+          <div className="stat-sub">zählen in der Wertung</div>
+        </article>
+
+        <article className="info-card">
+          <div className="stat-label">Unbestätigt</div>
+          <div className="stat-value">{voteStats.pending}</div>
+          <div className="stat-sub">warte auf Klick in der Mail</div>
         </article>
       </section>
 
@@ -229,8 +234,7 @@ export default function AdminDashboard({
             <div>
               <h2 className="section-title">Neue Umfrage anlegen</h2>
               <p className="section-subtitle">
-                Titel, Zeitraum, Songs und Slug sind bereits vorbefüllt. Der Slug
-                enthält automatisch das Datum.
+                Titel, Zeitraum, Songs und Slug sind bereits vorbefüllt. Der Slug enthält automatisch das Datum.
               </p>
             </div>
           </div>
@@ -383,7 +387,7 @@ export default function AdminDashboard({
             <div>
               <h2 className="section-title">Kurzübersicht</h2>
               <p className="section-subtitle">
-                Die wichtigsten Hinweise, damit neue Runden sofort sauber live gehen.
+                Bestätigte Stimmen zählen. Unbestätigte Stimmen erscheinen nur als Info im Backend.
               </p>
             </div>
           </div>
@@ -392,7 +396,7 @@ export default function AdminDashboard({
             <div className="notice">
               <div className="small-text">1. Songs einfügen</div>
               <div>
-                Jede Zeile in der Form <strong>Songtitel – Interpret</strong>.
+                Jede Zeile im Format <strong>Songtitel – Interpret</strong>.
               </div>
             </div>
 
@@ -404,16 +408,11 @@ export default function AdminDashboard({
             </div>
 
             <div className="notice">
-              <div className="small-text">3. Link kopieren</div>
+              <div className="small-text">3. E-Mail-Bestätigung</div>
               <div>
-                In der Übersicht unten direkt auf <strong>Umfrage öffnen</strong> klicken.
+                Erst nach Klick auf den Mail-Link zählt eine Stimme in der Auswertung.
               </div>
             </div>
-          </div>
-
-          <div className="notice warn" style={{ marginTop: 18 }}>
-            Öffentliche Seiten zeigen keinen Admin-Zugang. Der Verwaltungsbereich
-            ist nur intern über <span className="mono">/admin/login</span> erreichbar.
           </div>
         </article>
       </section>
@@ -526,8 +525,7 @@ export default function AdminDashboard({
             <div>
               <h2 className="section-title">Ergebnisse der aktuellen Runde</h2>
               <p className="section-subtitle">
-                Sortiert nach Gesamtpunkten. Die Ø-Punkte werden zusätzlich über alle
-                Teilnehmer hinweg angezeigt.
+                Sortiert nach Gesamtpunkten. Gezählt werden nur per Mail bestätigte Stimmen.
               </p>
             </div>
           </div>
@@ -540,7 +538,7 @@ export default function AdminDashboard({
                   <th>Song</th>
                   <th>Gesamt</th>
                   <th>Ø Punkte</th>
-                  <th>Wertungen</th>
+                  <th>Gewählt</th>
                 </tr>
               </thead>
 
@@ -548,7 +546,7 @@ export default function AdminDashboard({
                 {leaderboard.length === 0 && (
                   <tr>
                     <td colSpan={5}>
-                      <div className="empty-state">Noch keine Ergebnisse vorhanden.</div>
+                      <div className="empty-state">Noch keine bestätigten Stimmen vorhanden.</div>
                     </td>
                   </tr>
                 )}
@@ -590,7 +588,7 @@ export default function AdminDashboard({
                 <tr>
                   <th>Name</th>
                   <th>E-Mail</th>
-                  <th>Instagram</th>
+                  <th>Status</th>
                   <th>Zeitpunkt</th>
                 </tr>
               </thead>
@@ -608,7 +606,11 @@ export default function AdminDashboard({
                   <tr key={vote.id}>
                     <td>{vote.juror_name || '—'}</td>
                     <td>{vote.juror_email || '—'}</td>
-                    <td>{vote.juror_instagram || '—'}</td>
+                    <td>
+                      <span className={`status-chip ${vote.is_verified ? 'live' : 'draft'}`}>
+                        {vote.is_verified ? 'Bestätigt' : 'Unbestätigt'}
+                      </span>
+                    </td>
                     <td>{formatDateTime(vote.created_at)}</td>
                   </tr>
                 ))}
