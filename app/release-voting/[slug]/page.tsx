@@ -34,33 +34,33 @@ export default async function VotingBySlugPage({
   const shuffledSongs = shuffleSongs(round.songs_json ?? []);
 
   return (
-    <main className="public-shell">
+    <main className="public-shell vote-public-shell">
       <div className="public-stack page-width">
-        <section className="hero-card public-hero public-hero-flat">
-          <div className="public-hero-row">
+        <section className="hero-card vote-compact-header">
+          <div className="vote-compact-header-row">
             <BrandLogo compact />
 
-            <div className="hero-main">
-              <h1 className="hero-title hero-title-single-line">
+            <div className="vote-compact-header-content">
+              <h1 className="vote-header-title">
                 Knallhart serviert – Publikums Voting
               </h1>
 
-              <p className="hero-copy public-hero-copy">
+              <p className="vote-header-copy">
                 Wähle deine Top 12. Deine Stimme zählt erst nach Bestätigung per E-Mail-Link.
               </p>
 
-              <div className="public-inline-meta">
-                <div className="meta-chip meta-chip-round">
+              <div className="vote-meta-inline">
+                <div className="vote-meta-chip vote-meta-chip-round">
                   <span className="small-text">Aktuelle Runde</span>
                   <strong>{round.title}</strong>
                 </div>
 
-                <div className="meta-chip">
+                <div className="vote-meta-chip">
                   <span className="small-text">Status</span>
                   <strong>{publicStatusLabel(publicState)}</strong>
                 </div>
 
-                <div className="meta-chip">
+                <div className="vote-meta-chip">
                   <span className="small-text">Zeitraum</span>
                   <strong>
                     {formatDateTime(round.start_at)} bis {formatDateTime(round.end_at)}
@@ -72,15 +72,15 @@ export default async function VotingBySlugPage({
         </section>
 
         {publicState === 'upcoming' && (
-          <section className="table-card elevated-card public-live-card">
+          <section className="table-card elevated-card compact-live-card">
             <div className="empty-state">
-              Die Abstimmung hat noch nicht begonnen. Bitte später noch einmal auf dieser Seite nachsehen.
+              Die Abstimmung startet bald. Bitte später noch einmal auf dieser Seite nachsehen.
             </div>
           </section>
         )}
 
         {publicState === 'live' && (
-          <section className="table-card elevated-card public-live-card">
+          <section className="table-card elevated-card compact-live-card">
             <PublicVotingForm
               roundId={round.id}
               roundTitle={round.title}
@@ -91,7 +91,7 @@ export default async function VotingBySlugPage({
         )}
 
         {publicState === 'ended' && (
-          <section className="table-card elevated-card public-live-card">
+          <section className="table-card elevated-card compact-live-card">
             <div className="section-head compact-gap">
               <div>
                 <h2 className="section-title">Endstand User-Voting</h2>
