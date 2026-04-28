@@ -3,40 +3,41 @@ import { getConfigState } from '@/lib/supabaseAdmin';
 import {
   filterVerifiedVotes,
   getCurrentRound,
+  getImprintSettings,
   getVoteStats,
   getVotesForRound,
   leaderboardFromVotes,
   listRounds,
+  zonkLeaderboardFromVotes,
 } from '@/lib/releaseVoting';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminReleaseVotingPage() {
   const configState = getConfigState();
-  const roundsResult = await listRounds(100);
+  const roundsResult = await listRounds();
   const currentRoundResult = await getCurrentRound();
-  const currentVotesResult = currentRoundResult.data
-    ? await getVotesForRound(currentRoundResult.data.id)
-    : { data: [], error: null as string | null };
-
-  const verifiedVotes = filterVerifiedVotes(currentVotesResult.data);
-  const leaderboard = currentRoundResult.data
-    ? leaderboardFromVotes(currentRoundResult.data.songs_json ?? [], verifiedVotes)
-    : [];
-
-  const combinedError = [roundsResult.error, currentRoundResult.error, currentVotesResult.error]
-    .filter(Boolean)
-    .join(' · ');
+  const currentRound = currentRoundResult.data;
+  const votesResult = currentRound ? await getVotesForRound(currentRound.id) : { data: [], error: null as string | null };
+  const currentVotes = votesResult.data ?? [];
+  const verifiedVotes = filterVerifiedVotes(currentVotes);
+  const voteStats = getVoteStats(currentVotes);
+  const leaderboard = currentRound ? leaderboardFromVotes(currentRound.songs_json, verifiedVotes) : [];
+  const zonkLeaderboard = currentRound ? zonkLeaderboardFromVotes(currentRound.songs_json, verifiedVotes) : [];
+  const imprintResult = await getImprintSettings();
+  const loadError = roundsResult.error || currentRoundResult.error || votesResult.error || imprintResult.error || null;
 
   return (
     <AdminDashboard
       configState={configState}
-      rounds={roundsResult.data}
-      currentRound={currentRoundResult.data}
-      currentVotes={currentVotesResult.data}
-      voteStats={getVoteStats(currentVotesResult.data)}
+      rounds={roundsResult.data ?? []}
+      currentRound={currentRound}
+      currentVotes={currentVotes}
+      voteStats={voteStats}
       leaderboard={leaderboard}
-      loadError={combinedError || null}
+      zonkLeaderboard={zonkLeaderboard}
+      imprintSettings={imprintResult.data}
+      loadError={loadError}
     />
   );
 }
