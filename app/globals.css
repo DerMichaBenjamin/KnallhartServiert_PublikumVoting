@@ -1591,3 +1591,9 @@ body * {
 .background-overlay {
   pointer-events: none;
 }
+/* Sidebar begrenzen */
+.sidebar {
+  width: 280px; /* oder dein gewünschter Wert */
+  max-width: 280px;
+  overflow: hidden;
+}
