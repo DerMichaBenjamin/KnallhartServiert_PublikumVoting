@@ -16,6 +16,7 @@ export type RoundRow = {
   places_count: number;
   is_current: boolean;
   songs_json: string[];
+  spotify_playlist_id: string | null;
   created_at: string;
   updated_at: string;
   ended_at: string | null;
@@ -28,6 +29,7 @@ export type VoteRow = {
   juror_email: string | null;
   juror_instagram: string | null;
   ranking_json: VoteItem[];
+  zonk_song: string | null;
   created_at: string;
   updated_at: string;
   is_verified: boolean;
@@ -45,6 +47,14 @@ export type LeaderboardRow = {
   totalPoints: number;
   voteCount: number;
   averagePoints: number;
+};
+
+export type ZonkRow = {
+  rank: number;
+  song: string;
+  title: string;
+  artist: string;
+  count: number;
 };
 
 export type PublicRoundState = 'draft' | 'upcoming' | 'live' | 'ended';
@@ -75,6 +85,22 @@ export function parseSongList(raw: string) {
     });
 }
 
+export function mergeSongLists(existing: string[], additions: string[]) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const song of [...existing, ...additions]) {
+    const normalized = String(song ?? '').trim();
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(normalized);
+  }
+
+  return result;
+}
+
 export function splitSong(entry: string) {
   const normalized = entry.trim();
   const separatorMatch = normalized.match(/\s[–-]\s/);
@@ -96,6 +122,30 @@ export function splitSong(entry: string) {
 export function combineSongLine(entry: string) {
   const parts = splitSong(entry);
   return parts.artist === '—' ? parts.title : `${parts.title} — ${parts.artist}`;
+}
+
+export function normalizeSpotifyPlaylistId(value: string | null | undefined) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+
+  try {
+    const url = new URL(raw);
+    const parts = url.pathname.split('/').filter(Boolean);
+    const playlistIndex = parts.findIndex((part) => part === 'playlist');
+    if (playlistIndex >= 0 && parts[playlistIndex + 1]) {
+      return parts[playlistIndex + 1].trim();
+    }
+  } catch {
+    // raw ID, not URL
+  }
+
+  return raw.replace(/^spotify:playlist:/, '').split('?')[0].trim();
+}
+
+export function createSpotifyEmbedUrl(playlistId: string | null | undefined) {
+  const id = normalizeSpotifyPlaylistId(playlistId);
+  if (!id) return '';
+  return `https://open.spotify.com/embed/playlist/${encodeURIComponent(id)}?utm_source=generator&theme=0`;
 }
 
 export function normalizeDateTimeValue(value: string | null | undefined) {
@@ -204,8 +254,8 @@ export function leaderboardFromVotes(songs: string[], votes: VoteRow[]): Leaderb
     : [];
 
   const totalParticipants = validVotes.length;
-
   const map = new Map<string, { totalPoints: number; voteCount: number }>();
+
   songs.forEach((song) => {
     const normalizedSong = typeof song === 'string' ? song.trim() : '';
     if (!normalizedSong) return;
@@ -226,9 +276,7 @@ export function leaderboardFromVotes(songs: string[], votes: VoteRow[]): Leaderb
       seenInThisVote.add(song);
       const current = map.get(song)!;
       current.totalPoints += points;
-      if (points > 0) {
-        current.voteCount += 1;
-      }
+      if (points > 0) current.voteCount += 1;
     }
   }
 
@@ -251,6 +299,28 @@ export function leaderboardFromVotes(songs: string[], votes: VoteRow[]): Leaderb
       if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
       if (b.averagePoints !== a.averagePoints) return b.averagePoints - a.averagePoints;
       if (b.voteCount !== a.voteCount) return b.voteCount - a.voteCount;
+      return a.song.localeCompare(b.song, 'de');
+    })
+    .map((entry, index) => ({ ...entry, rank: index + 1 }));
+}
+
+export function zonkLeaderboardFromVotes(songs: string[], votes: VoteRow[]): ZonkRow[] {
+  const validSongs = new Set(songs.map((song) => String(song).trim()).filter(Boolean));
+  const map = new Map<string, number>();
+
+  for (const vote of votes) {
+    const zonk = String(vote.zonk_song ?? '').trim();
+    if (!zonk || !validSongs.has(zonk)) continue;
+    map.set(zonk, (map.get(zonk) ?? 0) + 1);
+  }
+
+  return Array.from(map.entries())
+    .map(([song, count]) => {
+      const parts = splitSong(song);
+      return { song, title: parts.title, artist: parts.artist, count };
+    })
+    .sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
       return a.song.localeCompare(b.song, 'de');
     })
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
@@ -333,4 +403,67 @@ export async function getVotesForRound(roundId: string) {
 
   if (error) return { data: [] as VoteRow[], error: error.message };
   return { data: (data ?? []) as VoteRow[], error: null as string | null };
+}
+
+export type ImprintSettings = {
+  content: string;
+  updated_at: string | null;
+};
+
+export const DEFAULT_IMPRINT_CONTENT = `Impressum
+
+Angaben gemäß § 5 TMG
+
+[Name / Unternehmen]
+[Straße und Hausnummer]
+[PLZ Ort]
+Deutschland
+
+Kontakt
+E-Mail: voting@knallhart-serviert.de
+
+Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV
+[Name]
+[Adresse]
+
+Hinweis: Bitte diese Angaben im Admin-Bereich vollständig und rechtssicher ausfüllen.`;
+
+export async function getImprintSettings() {
+  const configState = getConfigState();
+  if (!configState.ok) {
+    return {
+      data: { content: DEFAULT_IMPRINT_CONTENT, updated_at: null } as ImprintSettings,
+      error: configState.message,
+    };
+  }
+
+  const supabase = getSupabaseAdminClient();
+  if (!supabase) {
+    return {
+      data: { content: DEFAULT_IMPRINT_CONTENT, updated_at: null } as ImprintSettings,
+      error: 'Supabase-Client konnte nicht erstellt werden.',
+    };
+  }
+
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('value_json, updated_at')
+    .eq('key', 'imprint')
+    .maybeSingle();
+
+  if (error) {
+    return {
+      data: { content: DEFAULT_IMPRINT_CONTENT, updated_at: null } as ImprintSettings,
+      error: error.message,
+    };
+  }
+
+  const value = data?.value_json as { content?: string } | null;
+  return {
+    data: {
+      content: typeof value?.content === 'string' && value.content.trim() ? value.content : DEFAULT_IMPRINT_CONTENT,
+      updated_at: typeof data?.updated_at === 'string' ? data.updated_at : null,
+    } as ImprintSettings,
+    error: null as string | null,
+  };
 }
