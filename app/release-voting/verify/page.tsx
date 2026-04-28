@@ -7,15 +7,13 @@ export const dynamic = 'force-dynamic';
 export default async function VerifyVotePage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    token?: string;
-  }>;
+  searchParams: Promise<{ token?: string }>;
 }) {
   const params = await searchParams;
   const token = typeof params?.token === 'string' ? params.token : '';
 
   let isSuccess = false;
-  let message = 'Der Bestätigungslink ist ungültig oder wurde bereits verwendet.';
+  let message = 'Der Bestätigungslink ist ungültig oder wurde nicht gefunden.';
 
   if (!token) {
     message = 'Der Bestätigungslink ist unvollständig.';
@@ -30,20 +28,12 @@ export default async function VerifyVotePage({
       <section className="table-card public-card-soft verify-card-center vote-verify-card">
         <div className="vote-verify-header">
           <BrandLogo compact />
-
           <div className="vote-verify-header-copy">
             <div className="pill">Knallhart serviert Publikums-Voting</div>
-
-            <h1 className="hero-title vote-verify-title">
-              {isSuccess ? 'Voting bestätigt' : 'Bestätigung fehlgeschlagen'}
-            </h1>
-
+            <h1 className="hero-title vote-verify-title">{isSuccess ? 'Voting bestätigt' : 'Bestätigung fehlgeschlagen'}</h1>
             <p className="hero-copy vote-verify-copy">{message}</p>
-
             <div className="vote-verify-actions">
-              <Link className="button primary" href="/release-voting">
-                Zur Voting-Seite
-              </Link>
+              <Link className="button primary" href="/release-voting">Zur Voting-Seite</Link>
             </div>
           </div>
         </div>
