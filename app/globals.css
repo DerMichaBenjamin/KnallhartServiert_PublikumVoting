@@ -1569,3 +1569,25 @@ td {
     font-size: 14px;
   }
 }
+/* FIX: Navigation klickbar machen */
+header,
+nav {
+  position: relative;
+  z-index: 50;
+}
+
+/* Sidebar darf nichts überlagern */
+.sidebar {
+  z-index: 10;
+}
+
+/* Sicherstellen, dass nichts unsichtbar drüber liegt */
+body * {
+  pointer-events: auto;
+}
+
+/* Falls ein Overlay existiert */
+.overlay,
+.background-overlay {
+  pointer-events: none;
+}
