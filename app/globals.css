@@ -1597,3 +1597,160 @@ body * {
   max-width: 280px;
   overflow: hidden;
 }
+/* =========================================================
+   FIX: Saubere Layer-Struktur Sidebar / Header / Content
+   Ziel: Navigation bleibt immer klickbar
+   ========================================================= */
+
+/* Grundstruktur */
+body {
+  position: relative;
+}
+
+/* Hauptlayout darf keine Klicks blockieren */
+main,
+.page-shell,
+.public-shell,
+.dashboard-shell {
+  position: relative;
+  z-index: 10;
+}
+
+/* Sidebar links */
+.sidebar,
+.playlist-sidebar,
+.spotify-sidebar,
+.khs-sidebar,
+.vote-sidebar {
+  position: relative;
+  z-index: 20;
+}
+
+/* Header / Navigation immer über Content und Sidebar */
+header,
+.site-header,
+.public-header,
+.vote-header,
+nav,
+.navigation,
+.main-nav {
+  position: relative;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+/* Links im Header sicher klickbar */
+header a,
+.site-header a,
+.public-header a,
+.vote-header a,
+nav a,
+.navigation a,
+.main-nav a {
+  position: relative;
+  z-index: 101;
+  pointer-events: auto;
+}
+
+/* Dekorative Hintergründe dürfen nie Klicks abfangen */
+.bg,
+.background,
+.background-art,
+.background-overlay,
+.decor,
+.decor-layer,
+.palm-background,
+.hero-background,
+.hero-bg,
+.gradient-bg,
+.noise-layer,
+.overlay {
+  pointer-events: none;
+}
+
+/* Falls pseudo-transparente Flächen über dem Header liegen */
+.hero-card::before,
+.hero-card::after,
+.table-card::before,
+.table-card::after,
+.public-card-soft::before,
+.public-card-soft::after {
+  pointer-events: none;
+}
+
+/* Content-Karten bleiben normal bedienbar */
+.table-card,
+.hero-card,
+.info-card,
+.public-card-soft,
+.voting-panel,
+.available-card,
+.rank-slot,
+button,
+input,
+select,
+textarea {
+  pointer-events: auto;
+}
+
+/* Desktop: Sidebar klar links, Content daneben */
+@media (min-width: 901px) {
+  .khs-voting-layout,
+  .vote-page-layout,
+  .public-voting-layout {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+
+  .sidebar,
+  .playlist-sidebar,
+  .spotify-sidebar,
+  .khs-sidebar,
+  .vote-sidebar {
+    width: 280px;
+    max-width: 280px;
+    overflow: visible;
+  }
+
+  .vote-main,
+  .public-main,
+  .content,
+  .page-content {
+    min-width: 0;
+    position: relative;
+    z-index: 30;
+  }
+}
+
+/* Mobile: Sidebar nicht über Content legen */
+@media (max-width: 900px) {
+  .khs-voting-layout,
+  .vote-page-layout,
+  .public-voting-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar,
+  .playlist-sidebar,
+  .spotify-sidebar,
+  .khs-sidebar,
+  .vote-sidebar {
+    width: 100%;
+    max-width: 100%;
+    position: relative;
+    z-index: 10;
+  }
+
+  header,
+  .site-header,
+  .public-header,
+  .vote-header,
+  nav,
+  .navigation,
+  .main-nav {
+    z-index: 100;
+  }
+}
